@@ -7,7 +7,7 @@ blueprint:
   domain: automation
   input:
     # ==========================================
-    # MODE CONFIGURATION
+    # BASIC CONFIGURATION
     # ==========================================
     mode_selector:
       name: Mode Input Select Entity
@@ -19,6 +19,13 @@ blueprint:
     # ==========================================
     # TIME-BASED MODE CHANGES
     # ==========================================
+    time_modes_section:
+      name: "⏰ Time-Based Mode Changes"
+      description: "Configure automatic mode changes based on time, sunrise/sunset"
+      collapsed: false
+      selector:
+        addon: {}
+    
     enable_time_modes:
       name: Enable Time-Based Mode Changes
       description: Enable automatic mode changes based on time
@@ -299,6 +306,13 @@ blueprint:
     # ==========================================
     # PRESENCE-BASED MODE CHANGES
     # ==========================================
+    presence_section:
+      name: "👥 Presence-Based Mode Changes"
+      description: "Configure automatic away/home mode changes based on presence detection"
+      collapsed: true
+      selector:
+        addon: {}
+    
     enable_presence_modes:
       name: Enable Presence-Based Mode Changes
       description: Enable automatic mode changes based on presence
@@ -369,6 +383,13 @@ blueprint:
     # ==========================================
     # GUEST MODE
     # ==========================================
+    guest_section:
+      name: "🏠 Guest Mode"
+      description: "Prevent away mode changes when guests are present"
+      collapsed: true
+      selector:
+        addon: {}
+    
     guest_mode_sensor:
       name: Guest Mode Sensor (Optional)
       description: Binary sensor that indicates when guests are present (prevents away mode when 'on'). Leave empty to disable guest mode.
@@ -383,6 +404,13 @@ blueprint:
     # ==========================================
     # BUTTON-BASED MODE CHANGES
     # ==========================================
+    button_section:
+      name: "🔘 Button-Based Mode Changes"
+      description: "Configure mode changes triggered by button events"
+      collapsed: true
+      selector:
+        addon: {}
+    
     enable_button_modes:
       name: Enable Button-Based Mode Changes
       description: Enable mode changes triggered by button events
@@ -390,70 +418,30 @@ blueprint:
       selector:
         boolean: {}
     
-    button_devices:
-      name: Button Devices
-      description: Select button devices for mode control
-      default: {}
-      selector:
-        entity:
-          domain: 
-            - event
-            - sensor
-          multiple: true
-    
-    # Button Mode Mappings
-    button_mode_1:
-      name: Button Mode 1
-      description: Enter mode name from your input_select for first button event (leave empty to disable)
+    button_day_mode:
+      name: Day Mode Button Event
+      description: Button event to trigger Day mode (e.g., "button_1_single", "1002"). Leave empty to disable.
       default: ""
       selector:
         text: {}
     
-    button_event_1:
-      name: Button Event 1
-      description: Button event to trigger Mode 1 (e.g., "button_1_single")
+    button_evening_mode:
+      name: Evening Mode Button Event
+      description: Button event to trigger Evening mode (e.g., "button_2_single", "1004"). Leave empty to disable.
       default: ""
       selector:
         text: {}
     
-    button_mode_2:
-      name: Button Mode 2
-      description: Enter mode name from your input_select for second button event (leave empty to disable)
+    button_night_mode:
+      name: Night Mode Button Event
+      description: Button event to trigger Night mode (e.g., "button_3_single", "1006"). Leave empty to disable.
       default: ""
       selector:
         text: {}
     
-    button_event_2:
-      name: Button Event 2
-      description: Button event to trigger Mode 2 (e.g., "button_2_single")
-      default: ""
-      selector:
-        text: {}
-    
-    button_mode_3:
-      name: Button Mode 3
-      description: Enter mode name from your input_select for third button event (leave empty to disable)
-      default: ""
-      selector:
-        text: {}
-    
-    button_event_3:
-      name: Button Event 3
-      description: Button event to trigger Mode 3 (e.g., "button_3_single")
-      default: ""
-      selector:
-        text: {}
-    
-    button_mode_4:
-      name: Button Mode 4
-      description: Enter mode name from your input_select for fourth button event (leave empty to disable)
-      default: ""
-      selector:
-        text: {}
-    
-    button_event_4:
-      name: Button Event 4
-      description: Button event to trigger Mode 4 (e.g., "button_4_single")
+    button_away_mode:
+      name: Away Mode Button Event
+      description: Button event to trigger Away mode (e.g., "button_4_single", "1008"). Leave empty to disable.
       default: ""
       selector:
         text: {}
@@ -461,6 +449,13 @@ blueprint:
     # ==========================================
     # SWITCH-BASED MODE CHANGES
     # ==========================================
+    switch_section:
+      name: "🔌 Switch-Based Mode Changes"
+      description: "Configure mode changes triggered by switch states"
+      collapsed: true
+      selector:
+        addon: {}
+    
     enable_switch_modes:
       name: Enable Switch-Based Mode Changes
       description: Enable mode changes triggered by switch states
@@ -571,16 +566,11 @@ variables:
   night_schedule: !input night_schedule
   current_weekday: "{{ now().strftime('%A').lower() }}"
   guest_mode_sensor: !input guest_mode_sensor
-  # Button mappings
-  button_mappings:
-    - mode: !input button_mode_1
-      event: !input button_event_1
-    - mode: !input button_mode_2
-      event: !input button_event_2
-    - mode: !input button_mode_3
-      event: !input button_event_3
-    - mode: !input button_mode_4
-      event: !input button_event_4
+  # Button events
+  button_day_event: !input button_day_mode
+  button_evening_event: !input button_evening_mode
+  button_night_event: !input button_night_mode
+  button_away_event: !input button_away_mode
   # Switch mappings
   switch_mappings:
     - mode: !input switch_mode_1
@@ -906,9 +896,11 @@ action:
             value_template: >
               {% set event_data = trigger.event.data %}
               {% set command = event_data.command %}
-              {% set mappings = button_mappings %}
-              {% set valid_events = mappings | selectattr('event', 'ne', '') | map(attribute='event') | list %}
-              {{ command in valid_events }}
+              {% set day_event = button_day_event %}
+              {% set evening_event = button_evening_event %}
+              {% set night_event = button_night_event %}
+              {% set away_event = button_away_event %}
+              {{ command == day_event or command == evening_event or command == night_event or command == away_event }}
         sequence:
           - service: input_select.select_option
             target:
@@ -917,13 +909,19 @@ action:
               option: >
                 {% set event_data = trigger.event.data %}
                 {% set command = event_data.command %}
-                {% set mappings = button_mappings %}
-                {% for mapping in mappings %}
-                  {% if mapping.event == command and mapping.mode != '' %}
-                    {{ mapping.mode }}
-                    {% break %}
-                  {% endif %}
-                {% endfor %}
+                {% set day_event = button_day_event %}
+                {% set evening_event = button_evening_event %}
+                {% set night_event = button_night_event %}
+                {% set away_event = button_away_event %}
+                {% if command == day_event and day_event != '' %}
+                  {{ morning_mode }}
+                {% elif command == evening_event and evening_event != '' %}
+                  {{ evening_mode }}
+                {% elif command == night_event and night_event != '' %}
+                  {{ night_mode }}
+                {% elif command == away_event and away_event != '' %}
+                  {{ away_mode }}
+                {% endif %}
       
       # Switch-based mode changes
       - conditions:
