@@ -649,14 +649,14 @@ trigger:
   
   # Switch triggers
   - platform: state
-    entity_id: !input switch_entity_1
-    to: !input switch_state_1
+    entity_id: "{{ switch_entity_1 if switch_entity_1 != '' else mode_entity }}"
+    to: "{{ switch_state_1 if switch_entity_1 != '' else 'dummy_state' }}"
     id: "switch_1"
     enabled: "{{ enable_switch_modes and switch_entity_1 != '' and switch_mode_1 != '' }}"
   
   - platform: state
-    entity_id: !input switch_entity_2
-    to: !input switch_state_2
+    entity_id: "{{ switch_entity_2 if switch_entity_2 != '' else mode_entity }}"
+    to: "{{ switch_state_2 if switch_entity_2 != '' else 'dummy_state' }}"
     id: "switch_2"
     enabled: "{{ enable_switch_modes and switch_entity_2 != '' and switch_mode_2 != '' }}"
   
