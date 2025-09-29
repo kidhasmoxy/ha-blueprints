@@ -36,20 +36,8 @@ blueprint:
         text: {}
     
     light_group_1_entities:
-      name: Light Group 1 - Entities (Area Filtered)
-      description: Select lights for Group 1 from the selected area
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-          area: !input area_selector
-    
-    light_group_1_entities_all:
-      name: Light Group 1 - Entities (All Areas)
-      description: Select lights for Group 1 from any area
+      name: Light Group 1 - Entities
+      description: Select lights for Group 1
       default: {}
       selector:
         target:
@@ -67,20 +55,8 @@ blueprint:
         text: {}
     
     light_group_2_entities:
-      name: Light Group 2 - Entities (Area Filtered)
-      description: Select lights for Group 2 from the selected area
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-          area: !input area_selector
-    
-    light_group_2_entities_all:
-      name: Light Group 2 - Entities (All Areas)
-      description: Select lights for Group 2 from any area
+      name: Light Group 2 - Entities
+      description: Select lights for Group 2
       default: {}
       selector:
         target:
@@ -98,20 +74,8 @@ blueprint:
         text: {}
     
     light_group_3_entities:
-      name: Light Group 3 - Entities (Area Filtered)
-      description: Select lights for Group 3 from the selected area
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-          area: !input area_selector
-    
-    light_group_3_entities_all:
-      name: Light Group 3 - Entities (All Areas)
-      description: Select lights for Group 3 from any area
+      name: Light Group 3 - Entities
+      description: Select lights for Group 3
       default: {}
       selector:
         target:
@@ -124,19 +88,8 @@ blueprint:
     # MEANS TO ACTIVATE
     # ==========================================
     motion_sensors:
-      name: Motion Sensors (Area Filtered)
-      description: Motion sensors from the selected area (recommended)
-      default: {}
-      selector:
-        target:
-          entity:
-            domain: binary_sensor
-            device_class: motion
-          area: !input area_selector
-    
-    motion_sensors_all:
-      name: Motion Sensors (All Areas)
-      description: Motion sensors from any area (for cross-room setups)
+      name: Motion Sensors
+      description: Motion sensors that activate lights
       default: {}
       selector:
         target:
@@ -145,22 +98,8 @@ blueprint:
             device_class: motion
     
     contact_sensors:
-      name: Contact Sensors (Area Filtered)
-      description: Contact sensors from the selected area (recommended)
-      default: {}
-      selector:
-        target:
-          entity:
-            domain: binary_sensor
-            device_class: 
-              - door
-              - window
-              - garage_door
-          area: !input area_selector
-    
-    contact_sensors_all:
-      name: Contact Sensors (All Areas)
-      description: Contact sensors from any area (for cross-room setups)
+      name: Contact Sensors (Doors/Windows)
+      description: Contact sensors that activate lights when opened
       default: {}
       selector:
         target:
@@ -172,20 +111,8 @@ blueprint:
               - garage_door
     
     button_devices:
-      name: Button Devices (Area Filtered)
-      description: Button devices from the selected area (recommended)
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: sensor
-            - domain: binary_sensor
-            - domain: device_tracker
-          area: !input area_selector
-    
-    button_devices_all:
-      name: Button Devices (All Areas)
-      description: Button devices from any area (for cross-room setups)
+      name: Button Devices
+      description: Buttons, switches, or remotes that activate lights
       default: {}
       selector:
         target:
@@ -195,19 +122,8 @@ blueprint:
             - domain: device_tracker
     
     illuminance_sensor:
-      name: Illuminance Sensor (Area Filtered)
-      description: Light sensor from the selected area (recommended)
-      default: {}
-      selector:
-        entity:
-          domain: sensor
-          device_class: illuminance
-          filter:
-            - area: !input area_selector
-    
-    illuminance_sensor_all:
-      name: Illuminance Sensor (All Areas)
-      description: Light sensor from any area (for cross-room setups)
+      name: Illuminance Sensor (Optional)
+      description: Light sensor to prevent activation during bright conditions
       default: {}
       selector:
         entity:
@@ -597,21 +513,8 @@ blueprint:
     
     # Alternative Turn Off Devices
     alternative_turn_off_devices:
-      name: Alternative Turn Off Devices (Area Filtered)
-      description: Devices to turn off during turn-off events (even if not controlled by this automation)
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-            - domain: media_player
-          area: !input area_selector
-    
-    alternative_turn_off_devices_all:
-      name: Alternative Turn Off Devices (All Areas)
-      description: Devices from any area to turn off during turn-off events
+      name: Alternative Turn Off Devices
+      description: Additional devices to turn off during turn-off events (TVs, fans, etc.)
       default: {}
       selector:
         target:
@@ -632,18 +535,8 @@ blueprint:
         boolean: {}
     
     tv_media_player:
-      name: TV/Media Player (Area Filtered)
-      description: Media player from the selected area (recommended)
-      default: {}
-      selector:
-        entity:
-          domain: media_player
-          filter:
-            - area: !input area_selector
-    
-    tv_media_player_all:
-      name: TV/Media Player (All Areas)
-      description: Media player from any area (use if area filtering is not desired)
+      name: TV/Media Player Entity
+      description: Media player to check if TV is on
       default: {}
       selector:
         entity:
@@ -657,21 +550,8 @@ blueprint:
         boolean: {}
     
     sleep_sensor:
-      name: Sleep Sensor (Area Filtered)
-      description: Sleep sensor from the selected area (recommended)
-      default: {}
-      selector:
-        entity:
-          domain: 
-            - binary_sensor
-            - input_boolean
-            - switch
-          filter:
-            - area: !input area_selector
-    
-    sleep_sensor_all:
-      name: Sleep Sensor (All Areas)
-      description: Sleep sensor from any area (use if area filtering is not desired)
+      name: Sleep Sensor/Switch
+      description: Entity that indicates if someone is sleeping
       default: {}
       selector:
         entity:
@@ -767,55 +647,33 @@ variables:
       "Room"
     {% endif %}
   
-  # Combine light groups into effective lists
+  # Light group entity lists
   effective_group_1_lights: >
-    {% set area_lights = light_group_1_entities.entity_id | default([]) %}
-    {% set all_lights = light_group_1_entities_all.entity_id | default([]) %}
-    {{ (area_lights + all_lights) | unique | list }}
+    {{ light_group_1_entities.entity_id | default([]) }}
   
   effective_group_2_lights: >
-    {% set area_lights = light_group_2_entities.entity_id | default([]) %}
-    {% set all_lights = light_group_2_entities_all.entity_id | default([]) %}
-    {{ (area_lights + all_lights) | unique | list }}
+    {{ light_group_2_entities.entity_id | default([]) }}
   
   effective_group_3_lights: >
-    {% set area_lights = light_group_3_entities.entity_id | default([]) %}
-    {% set all_lights = light_group_3_entities_all.entity_id | default([]) %}
-    {{ (area_lights + all_lights) | unique | list }}
+    {{ light_group_3_entities.entity_id | default([]) }}
   
   # Combined list of all lights for triggers and conditions
   effective_lights: >
     {{ (effective_group_1_lights + effective_group_2_lights + effective_group_3_lights) | unique | list }}
   
-  # Alternative turn-off devices
-  effective_alternative_turn_off: >
-    {% set area_devices = alternative_turn_off_devices.entity_id | default([]) %}
-    {% set all_devices = alternative_turn_off_devices_all.entity_id | default([]) %}
-    {{ (area_devices + all_devices) | unique | list }}
-  
+  # Device entity lists
   effective_motion_sensors: >
-    {% set area_motion = motion_sensors.entity_id | default([]) %}
-    {% set all_motion = motion_sensors_all.entity_id | default([]) %}
-    {{ (area_motion + all_motion) | unique | list }}
+    {{ motion_sensors.entity_id | default([]) }}
   
   effective_contact_sensors: >
-    {% set area_contact = contact_sensors.entity_id | default([]) %}
-    {% set all_contact = contact_sensors_all.entity_id | default([]) %}
-    {{ (area_contact + all_contact) | unique | list }}
+    {{ contact_sensors.entity_id | default([]) }}
   
   effective_button_devices: >
-    {% set area_buttons = button_devices.entity_id | default([]) %}
-    {% set all_buttons = button_devices_all.entity_id | default([]) %}
-    {{ (area_buttons + all_buttons) | unique | list }}
+    {{ button_devices.entity_id | default([]) }}
   
-  effective_illuminance_sensor: >
-    {{ illuminance_sensor if illuminance_sensor else illuminance_sensor_all }}
-  
-  effective_tv_media_player: >
-    {{ tv_media_player if tv_media_player else tv_media_player_all }}
-  
-  effective_sleep_sensor: >
-    {{ sleep_sensor if sleep_sensor else sleep_sensor_all }}
+  # Alternative turn-off devices
+  effective_alternative_turn_off: >
+    {{ alternative_turn_off_devices.entity_id | default([]) }}
   
   # Get current mode from input_select.home_mode
   current_mode: "{{ states('input_select.home_mode') | lower }}"
@@ -952,24 +810,24 @@ variables:
   
   # Check illuminance condition
   illuminance_ok: >
-    {% if enable_illuminance_control and effective_illuminance_sensor %}
-      {{ states(effective_illuminance_sensor) | int(999) < illuminance_threshold }}
+    {% if enable_illuminance_control and illuminance_sensor %}
+      {{ states(illuminance_sensor) | int(999) < illuminance_threshold }}
     {% else %}
       true
     {% endif %}
   
   # Check TV condition
   tv_condition_ok: >
-    {% if disable_when_tv_on and effective_tv_media_player %}
-      {{ not is_state(effective_tv_media_player, 'playing') }}
+    {% if disable_when_tv_on and tv_media_player %}
+      {{ not is_state(tv_media_player, 'playing') }}
     {% else %}
       true
     {% endif %}
   
   # Check sleep condition
   sleep_condition_ok: >
-    {% if disable_when_sleeping and effective_sleep_sensor %}
-      {{ is_state(effective_sleep_sensor, 'off') }}
+    {% if disable_when_sleeping and sleep_sensor %}
+      {{ is_state(sleep_sensor, 'off') }}
     {% else %}
       true
     {% endif %}

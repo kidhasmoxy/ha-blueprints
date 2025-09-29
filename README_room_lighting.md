@@ -5,13 +5,10 @@ This Home Assistant blueprint replicates the comprehensive functionality of Hubi
 ## Features Implemented
 
 ### 🏠 Home Assistant Area Integration
-- **Area Selection**: Choose from your configured Home Assistant Areas
+- **Area Selection**: Choose from your configured Home Assistant Areas for automatic room naming
 - **Automatic Naming**: Room name automatically populated from area name
-- **Dual Device Selectors**: Each device type has both area-filtered and all-area options
-- **Smart Combination**: Blueprint automatically combines selections from both selectors
 - **Name Override**: Option to override area name with custom room name
-- **Flexible Setup**: Use area filtering for convenience or manual selection for precision
-- **Best of Both Worlds**: Get area filtering benefits while maintaining full control
+- **Clean Interface**: Single device selectors without confusing dual options
 
 ### ✅ Core Hubitat Room Lighting Features
 - **Multiple Activation Methods**: Motion sensors, contact sensors, buttons/switches
@@ -67,12 +64,11 @@ input_select:
 ## Configuration Guide
 
 ### Basic Setup
-1. **Area Selection**: Select a Home Assistant Area to automatically populate the room name and enable area filtering
+1. **Area Selection**: Select a Home Assistant Area to automatically populate the room name
 2. **Room Name Override**: Optionally override the area name with a custom room name
-3. **Device Selection**: For each device type, you'll see two options:
-   - **Area Filtered**: Shows only devices from the selected area (recommended)
-   - **All Areas**: Shows devices from any area (for cross-room setups)
-4. **Smart Combination**: The blueprint automatically combines your selections from both options
+3. **Light Groups**: Configure up to 3 groups of lights with individual names and entities
+4. **Activation Devices**: Select motion sensors, contact sensors, and button devices
+5. **Additional Devices**: Configure illuminance sensors, TV/media players, sleep sensors, and alternative turn-off devices
 
 **Device Types Available**:
 - **Light Groups (1-3)**: Organize lights into up to 3 groups with individual settings
@@ -87,7 +83,10 @@ input_select:
 - **Group 2**: Accent/table lamps (dimmer, warm white)
 - **Group 3**: Night lights (very dim, red/warm for nighttime)
 
-**Usage Tip**: Most users will only need the area-filtered selectors. Use the "All Areas" selectors only when you need devices from other rooms (e.g., hallway motion sensor for bedroom lights).
+**Usage Tips**: 
+- **Area Naming**: Select an area to automatically name your room automation
+- **Cross-Room Control**: Select devices from any room as needed (e.g., hallway motion sensor for bedroom lights)
+- **Flexible Grouping**: Use light groups to create layered lighting with different behaviors
 
 ### Activation Settings
 - **Enable Motion Activation**: Turn on for motion-based lighting
