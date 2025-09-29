@@ -1,7 +1,7 @@
 blueprint:
-  name: Advanced Room Lighting (Hubitat Style)
+  name: Advanced Room Lighting (Hubitat Style) v1.0
   description: |
-    Comprehensive room lighting automation that replicates Hubitat Room Lighting functionality.
+    Comprehensive room lighting automation that replicates Hubitat Room Lighting functionality (v1.0).
     Features motion detection, contact sensors, buttons, illuminance control, per-mode settings,
     advanced conditions, fade times, delays, and sophisticated turn-off logic.
   domain: automation
