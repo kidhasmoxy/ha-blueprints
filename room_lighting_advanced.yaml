@@ -1,7 +1,7 @@
 blueprint:
-  name: Advanced Room Lighting (Hubitat Style) v1.0
+  name: Advanced Room Lighting (Hubitat Style) v1.1
   description: |
-    Comprehensive room lighting automation that replicates Hubitat Room Lighting functionality (v1.0).
+    Comprehensive room lighting automation that replicates Hubitat Room Lighting functionality (v1.1).
     Features motion detection, contact sensors, buttons, illuminance control, per-mode settings,
     advanced conditions, fade times, delays, and sophisticated turn-off logic.
   domain: automation
@@ -40,13 +40,14 @@ blueprint:
         light_group_1_entities:
           name: Light Group 1 - Entities
           description: Select lights for Group 1
-          default: {}
+          default: []
           selector:
-            target:
-              entity:
-                - domain: light
-                - domain: switch
-                - domain: fan
+            entity:
+              multiple: true
+              domain:
+                - light
+                - switch
+                - fan
         
         # Light Group 2
         light_group_2_name:
@@ -59,13 +60,14 @@ blueprint:
         light_group_2_entities:
           name: Light Group 2 - Entities
           description: Select lights for Group 2
-          default: {}
+          default: []
           selector:
-            target:
-              entity:
-                - domain: light
-                - domain: switch
-                - domain: fan
+            entity:
+              multiple: true
+              domain:
+                - light
+                - switch
+                - fan
         
         # Light Group 3
         light_group_3_name:
@@ -78,13 +80,14 @@ blueprint:
         light_group_3_entities:
           name: Light Group 3 - Entities
           description: Select lights for Group 3
-          default: {}
+          default: []
           selector:
-            target:
-              entity:
-                - domain: light
-                - domain: switch
-                - domain: fan
+            entity:
+              multiple: true
+              domain:
+                - light
+                - switch
+                - fan
     activation_triggers_section:
       name: "🚪 Means to Activate"
       description: "Configure sensors and devices that trigger light activation"
@@ -93,36 +96,37 @@ blueprint:
         motion_sensors:
           name: Motion Sensors
           description: Motion sensors that activate lights
-          default: {}
+          default: []
           selector:
-            target:
-              entity:
-                domain: binary_sensor
-                device_class: motion
+            entity:
+              multiple: true
+              domain: binary_sensor
+              device_class: motion
         
         contact_sensors:
           name: Contact Sensors (Doors/Windows)
           description: Contact sensors that activate lights when opened
-          default: {}
+          default: []
           selector:
-            target:
-              entity:
-                domain: binary_sensor
-                device_class: 
-                  - door
-                  - window
-                  - garage_door
+            entity:
+              multiple: true
+              domain: binary_sensor
+              device_class:
+                - door
+                - window
+                - garage_door
         
         button_devices:
           name: Button Devices
           description: Buttons, switches, or remotes that activate lights
-          default: {}
+          default: []
           selector:
-            target:
-              entity:
-                - domain: sensor
-                - domain: binary_sensor
-                - domain: device_tracker
+            entity:
+              multiple: true
+              domain:
+                - sensor
+                - binary_sensor
+                - device_tracker
         
         illuminance_sensor:
           name: Illuminance Sensor (Optional)
@@ -518,19 +522,21 @@ blueprint:
     alternative_turn_off_devices:
       name: Alternative Turn Off Devices
       description: Additional devices to turn off during turn-off events (TVs, fans, etc.)
-      default: {}
+      default: []
       selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-            - domain: media_player
+        entity:
+          multiple: true
+          domain:
+            - light
+            - switch
+            - fan
+            - media_player
     
     # ==========================================
     # ACTIVATE LIGHTS OPTIONS (CONDITIONS)
     # ==========================================
     disable_when_tv_on:
+{{ ... }}
       name: Disable When TV is On
       description: Don't activate if TV or media player is on
       default: false
@@ -642,23 +648,23 @@ blueprint:
 variables:
   # Determine the effective room name (area name or override)
   effective_room_name: >
-    {% if room_setup_section.room_name and room_setup_section.room_name | trim != "" %}
-      {{ room_setup_section.room_name }}
-    {% elif room_setup_section.area_selector %}
-      {{ area_name(room_setup_section.area_selector) }}
+    {% if room_name and room_name | trim != "" %}
+      {{ room_name }}
+    {% elif area_selector %}
+      {{ area_name(area_selector) }}
     {% else %}
       "Room"
     {% endif %}
   
   # Light group entity lists
   effective_group_1_lights: >
-    {{ devices_section.light_group_1_entities.entity_id | default([]) }}
+    {{ light_group_1_entities | default([]) }}
   
   effective_group_2_lights: >
-    {{ devices_section.light_group_2_entities.entity_id | default([]) }}
+    {{ light_group_2_entities | default([]) }}
   
   effective_group_3_lights: >
-    {{ devices_section.light_group_3_entities.entity_id | default([]) }}
+    {{ light_group_3_entities | default([]) }}
   
   # Combined list of all lights for triggers and conditions
   effective_lights: >
@@ -666,17 +672,17 @@ variables:
   
   # Device entity lists
   effective_motion_sensors: >
-    {{ activation_triggers_section.motion_sensors.entity_id | default([]) }}
+    {{ motion_sensors | default([]) }}
   
   effective_contact_sensors: >
-    {{ activation_triggers_section.contact_sensors.entity_id | default([]) }}
+    {{ contact_sensors | default([]) }}
   
   effective_button_devices: >
-    {{ activation_triggers_section.button_devices.entity_id | default([]) }}
+    {{ button_devices | default([]) }}
   
   # Alternative turn-off devices
   effective_alternative_turn_off: >
-    {{ alternative_turn_off_devices.entity_id | default([]) }}
+    {{ alternative_turn_off_devices | default([]) }}
   
   # Get current mode from input_select.home_mode
   current_mode: "{{ states('input_select.home_mode') | lower }}"
