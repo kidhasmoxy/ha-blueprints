@@ -1,111 +1,84 @@
 blueprint:
-  name: Mode Manager (Hubitat Style) — Fixed & Enhanced
+  name: Mode Manager (Hubitat Style)
   description: |
-    Comprehensive mode management that mirrors Hubitat's Mode Manager.
-    • Changes modes based on time, sunrise/sunset, presence, buttons, and switches.
-    • Uses a single input_select to represent your current "home mode".
-    • Supports "earlier/later" logic between fixed time and sun events.
-    • Optional: presence delays, startup set, guest/hold overrides, debug logging.
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality.
+    Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
+    Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
   homeassistant:
     min_version: 2024.6.0
-
   input:
-    # =========================
-    # BASIC MODE SELECTOR
-    # =========================
+    # ==========================================
+    # BASIC CONFIGURATION
+    # ==========================================
     mode_selector:
       name: Mode Input Select Entity
-      description: The input_select that stores the current mode (must include all modes you plan to set).
+      description: Select the input_select entity that will store the current mode
       selector:
         entity:
           domain: input_select
-
-    # =========================
-    # HOLD / GUEST / DEBUG
-    # =========================
-    hold_override:
-      name: Hold Override (Optional)
-      description: When this entity is ON, the automation will NOT change modes (use an input_boolean or switch). Leave empty to disable.
-      default: ""
-      selector:
-        entity:
-          multiple: false
-          domain:
-            - input_boolean
-            - switch
-            - binary_sensor
-
-    guest_mode_sensor:
-      name: Guest Mode Sensor (Optional)
-      description: When ON, blocks switching to Away. (binary_sensor, input_boolean, or switch). Leave empty to disable.
-      default: ""
-      selector:
-        entity:
-          domain:
-            - binary_sensor
-            - input_boolean
-            - switch
-
-    enable_debug:
-      name: Enable Debug Logging
-      description: Writes decision breadcrumbs to Logbook.
-      default: false
-      selector:
-        boolean: {}
-
-    # =========================
-    # TIME-BASED MODES
-    # =========================
+    
     time_modes_section:
       name: "⏰ Time-Based Mode Changes"
       icon: mdi:clock-outline
+      description: "Configure automatic mode changes based on time, sunrise/sunset"
       collapsed: false
       input:
         enable_time_modes:
           name: Enable Time-Based Mode Changes
+          description: Enable automatic mode changes based on time
           default: true
-          selector: { boolean: {} }
-
-        # --- Day (Morning) ---
+          selector:
+            boolean: {}
+        
+        # Morning/Day Mode Settings
         enable_morning_mode:
-          name: Enable Day Mode
+          name: "Enable Day Mode"
+          description: "Enable automatic Day mode changes"
           default: true
-          selector: { boolean: {} }
-
+          selector:
+            boolean: {}
+        
         morning_mode:
-          name: Day Mode Name
+          name: "Day Mode"
+          description: "Enter the mode name from your input_select to set during daytime (e.g., 'Day', 'Morning')"
           default: "Day"
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         morning_trigger_type:
-          name: Day Mode Trigger
+          name: "Day Mode Trigger"
+          description: "How to trigger Day mode"
           default: "time"
           selector:
             select:
               options:
                 - label: "Fixed Time"
                   value: "time"
-                - label: "Sunrise (with offset)"
+                - label: "Sunrise (with optional offset)"
                   value: "sunrise"
                 - label: "Earlier of Fixed Time or Sunrise"
                   value: "earlier"
                 - label: "Later of Fixed Time or Sunrise"
                   value: "later"
-
+    
         morning_time:
-          name: Day Mode — Fixed Time
+          name: "Day Mode - Fixed Time"
+          description: "Fixed time to switch to Day mode"
           default: "07:00:00"
-          selector: { time: {} }
-
+          selector:
+            time: {}
+    
         sunrise_offset:
-          name: Day Mode — Sunrise Offset (time period)
-          description: Time delta to add to sunrise. Use negative values like "-00:10:00" for before sunrise.
-          default: "00:00:00"
-          selector: { text: {} }
-
+          name: "Day Mode - Sunrise Offset"
+          description: "Time before (-) or after (+) sunrise"
+          default: { minutes: 0 }
+          selector:
+            duration: {}
+    
         morning_schedule_type:
-          name: Day Mode — Schedule Type
+          name: "Day Mode - Schedule Type"
+          description: "Choose how to control when Day mode is triggered"
           default: "all_days"
           selector:
             select:
@@ -116,75 +89,87 @@ blueprint:
                   value: "specific_days"
                 - label: "Use Schedule Helper"
                   value: "schedule_helper"
-
+    
         morning_days:
-          name: Day Mode — Days of Week
+          name: "Day Mode - Days of Week"
+          description: "Select days when Day mode should be triggered (only used if 'Select Specific Days' chosen above)"
           default: []
           selector:
             select:
-              multiple: true
               options:
-                - label: Monday
-                  value: monday
-                - label: Tuesday
-                  value: tuesday
-                - label: Wednesday
-                  value: wednesday
-                - label: Thursday
-                  value: thursday
-                - label: Friday
-                  value: friday
-                - label: Saturday
-                  value: saturday
-                - label: Sunday
-                  value: sunday
-
+                - label: "Monday"
+                  value: "monday"
+                - label: "Tuesday"
+                  value: "tuesday"
+                - label: "Wednesday"
+                  value: "wednesday"
+                - label: "Thursday"
+                  value: "thursday"
+                - label: "Friday"
+                  value: "friday"
+                - label: "Saturday"
+                  value: "saturday"
+                - label: "Sunday"
+                  value: "sunday"
+              multiple: true
+    
         morning_schedule:
-          name: Day Mode — Schedule Helper
+          name: "Day Mode - Schedule Helper"
+          description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
           default: ""
           selector:
             entity:
               domain: schedule
-
-        # --- Evening ---
+              multiple: false
+    
+        # Evening Mode Settings
         enable_evening_mode:
-          name: Enable Evening Mode
+          name: "Enable Evening Mode"
+          description: "Enable automatic Evening mode changes"
           default: true
-          selector: { boolean: {} }
-
+          selector:
+            boolean: {}
+    
         evening_mode:
-          name: Evening Mode Name
+          name: "Evening Mode"
+          description: "Enter the mode name from your input_select to set during evening (e.g., 'Evening', 'Dusk')"
           default: "Evening"
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         evening_trigger_type:
-          name: Evening Mode Trigger
+          name: "Evening Mode Trigger"
+          description: "How to trigger Evening mode"
           default: "time"
           selector:
             select:
               options:
                 - label: "Fixed Time"
                   value: "time"
-                - label: "Sunset (with offset)"
+                - label: "Sunset (with optional offset)"
                   value: "sunset"
                 - label: "Earlier of Fixed Time or Sunset"
                   value: "earlier"
                 - label: "Later of Fixed Time or Sunset"
                   value: "later"
-
+    
         evening_time:
-          name: Evening Mode — Fixed Time
+          name: "Evening Mode - Fixed Time"
+          description: "Fixed time to switch to Evening mode"
           default: "18:00:00"
-          selector: { time: {} }
-
+          selector:
+            time: {}
+    
         sunset_offset:
-          name: Evening Mode — Sunset Offset (time period)
-          description: Time delta to add to sunset. Use negative values like "-00:10:00".
-          default: "00:00:00"
-          selector: { text: {} }
-
+          name: "Evening Mode - Sunset Offset"
+          description: "Time before (-) or after (+) sunset"
+          default: { minutes: 0 }
+          selector:
+            duration: {}
+    
         evening_schedule_type:
-          name: Evening Mode — Schedule Type
+          name: "Evening Mode - Schedule Type"
+          description: "Choose how to control when Evening mode is triggered"
           default: "all_days"
           selector:
             select:
@@ -195,75 +180,87 @@ blueprint:
                   value: "specific_days"
                 - label: "Use Schedule Helper"
                   value: "schedule_helper"
-
+    
         evening_days:
-          name: Evening Mode — Days of Week
+          name: "Evening Mode - Days of Week"
+          description: "Select days when Evening mode should be triggered (only used if 'Select Specific Days' chosen above)"
           default: []
           selector:
             select:
-              multiple: true
               options:
-                - label: Monday
-                  value: monday
-                - label: Tuesday
-                  value: tuesday
-                - label: Wednesday
-                  value: wednesday
-                - label: Thursday
-                  value: thursday
-                - label: Friday
-                  value: friday
-                - label: Saturday
-                  value: saturday
-                - label: Sunday
-                  value: sunday
-
+                - label: "Monday"
+                  value: "monday"
+                - label: "Tuesday"
+                  value: "tuesday"
+                - label: "Wednesday"
+                  value: "wednesday"
+                - label: "Thursday"
+                  value: "thursday"
+                - label: "Friday"
+                  value: "friday"
+                - label: "Saturday"
+                  value: "saturday"
+                - label: "Sunday"
+                  value: "sunday"
+              multiple: true
+    
         evening_schedule:
-          name: Evening Mode — Schedule Helper
+          name: "Evening Mode - Schedule Helper"
+          description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
           default: ""
           selector:
             entity:
               domain: schedule
-
-        # --- Night ---
+              multiple: false
+    
+        # Night Mode Settings
         enable_night_mode:
-          name: Enable Night Mode
+          name: "Enable Night Mode"
+          description: "Enable automatic Night mode changes"
           default: true
-          selector: { boolean: {} }
-
+          selector:
+            boolean: {}
+    
         night_mode:
-          name: Night Mode Name
+          name: "Night Mode"
+          description: "Enter the mode name from your input_select to set at night (e.g., 'Night', 'Sleep')"
           default: "Night"
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         night_trigger_type:
-          name: Night Mode Trigger
+          name: "Night Mode Trigger"
+          description: "How to trigger Night mode"
           default: "time"
           selector:
             select:
               options:
                 - label: "Fixed Time"
                   value: "time"
-                - label: "Sunset (with offset)"
+                - label: "Sunset (with optional offset)"
                   value: "sunset"
                 - label: "Earlier of Fixed Time or Sunset"
                   value: "earlier"
                 - label: "Later of Fixed Time or Sunset"
                   value: "later"
-
+    
         night_time:
-          name: Night Mode — Fixed Time
+          name: "Night Mode - Fixed Time"
+          description: "Fixed time to switch to Night mode"
           default: "22:00:00"
-          selector: { time: {} }
-
+          selector:
+            time: {}
+    
         night_sunset_offset:
-          name: Night Mode — Sunset Offset (time period)
-          description: Time delta to add to sunset for night trigger (e.g., "04:00:00" = +4h after sunset).
-          default: "04:00:00"
-          selector: { text: {} }
-
+          name: "Night Mode - Sunset Offset"
+          description: "Time before (-) or after (+) sunset for Night mode"
+          default: { minutes: 240 }
+          selector:
+            duration: {}
+    
         night_schedule_type:
-          name: Night Mode — Schedule Type
+          name: "Night Mode - Schedule Type"
+          description: "Choose how to control when Night mode is triggered"
           default: "all_days"
           selector:
             select:
@@ -274,307 +271,313 @@ blueprint:
                   value: "specific_days"
                 - label: "Use Schedule Helper"
                   value: "schedule_helper"
-
+    
         night_days:
-          name: Night Mode — Days of Week
+          name: "Night Mode - Days of Week"
+          description: "Select days when Night mode should be triggered (only used if 'Select Specific Days' chosen above)"
           default: []
           selector:
             select:
-              multiple: true
               options:
-                - label: Monday
-                  value: monday
-                - label: Tuesday
-                  value: tuesday
-                - label: Wednesday
-                  value: wednesday
-                - label: Thursday
-                  value: thursday
-                - label: Friday
-                  value: friday
-                - label: Saturday
-                  value: saturday
-                - label: Sunday
-                  value: sunday
-
+                - label: "Monday"
+                  value: "monday"
+                - label: "Tuesday"
+                  value: "tuesday"
+                - label: "Wednesday"
+                  value: "wednesday"
+                - label: "Thursday"
+                  value: "thursday"
+                - label: "Friday"
+                  value: "friday"
+                - label: "Saturday"
+                  value: "saturday"
+                - label: "Sunday"
+                  value: "sunday"
+              multiple: true
+    
         night_schedule:
-          name: Night Mode — Schedule Helper
+          name: "Night Mode - Schedule Helper"
+          description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
           default: ""
           selector:
             entity:
               domain: schedule
-
+              multiple: false
+    
         skip_time_modes:
           name: Skip Time Changes for These Modes
-          description: Comma-separated list of modes that time triggers must not override (e.g., "Away,Vacation,Party").
+          description: Comma-separated list of modes that should not be changed by time-based triggers (e.g., "Away,Vacation,Party")
           default: "Away"
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         set_mode_on_startup:
-          name: Set Mode on Home Assistant Startup
+          name: Set Mode on System Startup
+          description: Set mode based on time table when Home Assistant starts
           default: false
-          selector: { boolean: {} }
-
-    # =========================
-    # PRESENCE
-    # =========================
+          selector:
+            boolean: {}
+    
     presence_section:
       name: "👥 Presence-Based Mode Changes"
       icon: mdi:account-multiple
+      description: "Configure automatic away/home mode changes based on presence detection"
       collapsed: true
       input:
         enable_presence_modes:
           name: Enable Presence-Based Mode Changes
+          description: Enable automatic mode changes based on presence
           default: false
-          selector: { boolean: {} }
-
+          selector:
+            boolean: {}
+    
         presence_trackers:
-          name: Person / Device Trackers
-          description: Choose person or device_tracker entities.
+          name: Device Trackers / Person Entities
+          description: Select device tracker or person entities for presence detection
           default: []
           selector:
             entity:
-              multiple: true
               domain:
                 - person
                 - device_tracker
-
+              multiple: true
+    
         away_trigger_logic:
           name: Away Mode Trigger Logic
+          description: When to trigger Away mode
           default: "all_away"
           selector:
             select:
               options:
-                - label: When ALL selected are away
-                  value: all_away
-                - label: When ANY selected leaves
-                  value: any_away
-
+                - label: "When ALL selected people/devices are away"
+                  value: "all_away"
+                - label: "When ANY selected person/device leaves"
+                  value: "any_away"
+    
         away_mode:
-          name: Away Mode Name
+          name: Away Mode
+          description: Enter the mode name from your input_select to set when away condition is met (e.g., 'Away', 'Vacation')
           default: "Away"
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         return_trigger_logic:
           name: Return Trigger Logic
+          description: When to trigger return from Away mode
           default: "any_home"
           selector:
             select:
               options:
-                - label: When ANY selected returns
-                  value: any_home
-                - label: When ALL selected are home
-                  value: all_home
-
+                - label: "When ANY selected person/device returns home"
+                  value: "any_home"
+                - label: "When ALL selected people/devices are home"
+                  value: "all_home"
+    
         return_from_away_mode:
-          name: Return Behavior
+          name: Return from Away Behavior
+          description: How to handle returning from away mode
           default: "time_based"
           selector:
             select:
               options:
-                - label: Use time-of-day (recommended)
-                  value: time_based
-                - label: Set a specific mode
-                  value: specific
-
+                - label: "Use time-based mode (recommended)"
+                  value: "time_based"
+                - label: "Use specific mode"
+                  value: "specific"
+    
         return_mode:
-          name: Return Mode (if specific)
+          name: Return Mode
+          description: Enter the mode name from your input_select to set when returning (if not using time-based, e.g., 'Day')
           default: "Day"
-          selector: { text: {} }
-
-        presence_away_delay:
-          name: Away Trigger Delay (seconds)
-          description: Require "away" condition to hold this long before switching to Away.
-          default: 0
           selector:
-            number:
-              min: 0
-              max: 3600
-              step: 5
-              mode: slider
-
-        presence_home_delay:
-          name: Return Home Trigger Delay (seconds)
-          description: Require "home" condition to hold this long before returning from Away.
-          default: 0
-          selector:
-            number:
-              min: 0
-              max: 3600
-              step: 5
-              mode: slider
-
-    # =========================
-    # BUTTONS
-    # =========================
+            text: {}
+    
+    # ==========================================
+    # 🏠 GUEST MODE
+    # ==========================================
+    guest_mode_sensor:
+      name: Guest Mode Sensor (Optional)
+      description: Binary sensor that indicates when guests are present (prevents away mode when 'on'). Leave empty to disable guest mode.
+      default: ""
+      selector:
+        entity:
+          domain: 
+            - binary_sensor
+            - input_boolean
+            - switch
+    
     button_section:
       name: "🔘 Button-Based Mode Changes"
       icon: mdi:gesture-tap-button
+      description: "Configure mode changes triggered by button events"
       collapsed: true
       input:
         enable_button_modes:
           name: Enable Button-Based Mode Changes
+          description: Enable mode changes triggered by button events
           default: false
-          selector: { boolean: {} }
-
+          selector:
+            boolean: {}
+    
         button_day_mode:
-          name: Day Mode Button Event (value to match)
+          name: Day Mode Button Event
+          description: Button event to trigger Day mode (e.g., "button_1_single", "1002"). Leave empty to disable.
           default: ""
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         button_evening_mode:
-          name: Evening Mode Button Event (value to match)
+          name: Evening Mode Button Event
+          description: Button event to trigger Evening mode (e.g., "button_2_single", "1004"). Leave empty to disable.
           default: ""
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         button_night_mode:
-          name: Night Mode Button Event (value to match)
+          name: Night Mode Button Event
+          description: Button event to trigger Night mode (e.g., "button_3_single", "1006"). Leave empty to disable.
           default: ""
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         button_away_mode:
-          name: Away Mode Button Event (value to match)
+          name: Away Mode Button Event
+          description: Button event to trigger Away mode (e.g., "button_4_single", "1008"). Leave empty to disable.
           default: ""
-          selector: { text: {} }
-
-    # =========================
-    # SWITCHES
-    # =========================
+          selector:
+            text: {}
+    
     switch_section:
       name: "🔌 Switch-Based Mode Changes"
       icon: mdi:toggle-switch
+      description: "Configure mode changes triggered by switch states"
       collapsed: true
       input:
         enable_switch_modes:
           name: Enable Switch-Based Mode Changes
+          description: Enable mode changes triggered by switch states
           default: false
-          selector: { boolean: {} }
-
-        switch_mode_1:
-          name: Switch Mode 1 (mode name to set)
-          default: ""
-          selector: { text: {} }
-
-        switch_entity_1:
-          name: Switch Entity 1
-          default: ""
+          selector:
+            boolean: {}
+    
+        switch_devices:
+          name: Switch Devices
+          description: Select switch entities for mode control
+          default: {}
           selector:
             entity:
-              domain:
+              domain: 
                 - switch
                 - light
                 - input_boolean
-
+              multiple: true
+    
+        # Switch Mode Mappings
+        switch_mode_1:
+          name: Switch Mode 1
+          description: Enter mode name from your input_select for first switch trigger (leave empty to disable)
+          default: ""
+          selector:
+            text: {}
+    
+        switch_entity_1:
+          name: Switch Entity 1
+          description: Switch entity for Mode 1
+          default: ""
+          selector:
+            entity:
+              domain: 
+                - switch
+                - light
+                - input_boolean
+    
         switch_state_1:
-          name: Switch State 1 to Trigger
+          name: Switch State 1
+          description: Switch state that triggers Mode 1
           default: "on"
           selector:
             select:
               options:
-                - label: On
+                - label: "On"
                   value: "on"
-                - label: Off
+                - label: "Off"
                   value: "off"
-
+    
         switch_mode_2:
-          name: Switch Mode 2 (mode name to set)
+          name: Switch Mode 2
+          description: Enter mode name from your input_select for second switch trigger (leave empty to disable)
           default: ""
-          selector: { text: {} }
-
+          selector:
+            text: {}
+    
         switch_entity_2:
           name: Switch Entity 2
+          description: Switch entity for Mode 2
           default: ""
           selector:
             entity:
-              domain:
+              domain: 
                 - switch
                 - light
                 - input_boolean
-
+    
         switch_state_2:
-          name: Switch State 2 to Trigger
+          name: Switch State 2
+          description: Switch state that triggers Mode 2
           default: "off"
           selector:
             select:
               options:
-                - label: On
+                - label: "On"
                   value: "on"
-                - label: Off
+                - label: "Off"
                   value: "off"
 
-# =========================
-# VARIABLES
-# =========================
 variables:
   mode_entity: !input mode_selector
-  current_mode: "{{ states(mode_entity) | string }}"
   skip_modes: !input skip_time_modes
-  skip_mode_list: "{{ (skip_modes.split(',') | map('trim') | list) if skip_modes else [] }}"
-
-  # Feature flags
+  current_mode: "{{ states(mode_entity) }}"
+  skip_mode_list: "{{ skip_modes.split(',') | map('trim') | list if skip_modes else [] }}"
+  morning_trigger_type: !input morning_trigger_type
+  evening_trigger_type: !input evening_trigger_type
+  night_trigger_type: !input night_trigger_type
   enable_time_modes: !input enable_time_modes
   enable_morning_mode: !input enable_morning_mode
   enable_evening_mode: !input enable_evening_mode
   enable_night_mode: !input enable_night_mode
   enable_presence_modes: !input enable_presence_modes
-  enable_button_modes: !input enable_button_modes
   enable_switch_modes: !input enable_switch_modes
-  enable_debug: !input enable_debug
-
-  # Hold/Guest
-  hold_override: !input hold_override
-  guest_mode_sensor: !input guest_mode_sensor
-
-  # Modes
-  morning_mode: !input morning_mode
-  evening_mode: !input evening_mode
-  night_mode: !input night_mode
-  away_mode: !input away_mode
-  return_mode: !input return_mode
-
-  # Trigger types
-  morning_trigger_type: !input morning_trigger_type
-  evening_trigger_type: !input evening_trigger_type
-  night_trigger_type: !input night_trigger_type
-
-  # Time inputs
   morning_time: !input morning_time
   evening_time: !input evening_time
-  night_time: !input night_time
-
-  # Offsets (as time period strings, may be negative like "-00:10:00")
   sunrise_offset: !input sunrise_offset
   sunset_offset: !input sunset_offset
-  night_sunset_offset: !input night_sunset_offset
-
-  # Scheduling helpers
-  morning_schedule_type: !input morning_schedule_type
-  morning_days: !input morning_days
-  morning_schedule: !input morning_schedule
-
-  evening_schedule_type: !input evening_schedule_type
-  evening_days: !input evening_days
-  evening_schedule: !input evening_schedule
-
-  night_schedule_type: !input night_schedule_type
-  night_days: !input night_days
-  night_schedule: !input night_schedule
-
-  # Presence config
   presence_trackers: !input presence_trackers
   away_trigger_logic: !input away_trigger_logic
   return_trigger_logic: !input return_trigger_logic
-  return_from_away_mode: !input return_from_away_mode
-  presence_away_delay: !input presence_away_delay
-  presence_home_delay: !input presence_home_delay
-
-  # Buttons
+  away_mode: !input away_mode
+  morning_mode: !input morning_mode
+  evening_mode: !input evening_mode
+  night_mode: !input night_mode
+  return_mode: !input return_mode
+  morning_schedule_type: !input morning_schedule_type
+  morning_days: !input morning_days
+  morning_schedule: !input morning_schedule
+  evening_schedule_type: !input evening_schedule_type
+  evening_days: !input evening_days
+  evening_schedule: !input evening_schedule
+  night_schedule_type: !input night_schedule_type
+  night_days: !input night_days
+  night_schedule: !input night_schedule
+  night_time: !input night_time
+  night_sunset_offset: !input night_sunset_offset
+  current_weekday: "{{ now().strftime('%A').lower() }}"
+  guest_mode_sensor: !input guest_mode_sensor
+  # Button events
   button_day_event: !input button_day_mode
   button_evening_event: !input button_evening_mode
   button_night_event: !input button_night_mode
   button_away_event: !input button_away_mode
-
-  # Switches
+  # Switch variables
   switch_mode_1: !input switch_mode_1
   switch_entity_1: !input switch_entity_1
   switch_state_1: !input switch_state_1
@@ -582,452 +585,415 @@ variables:
   switch_entity_2: !input switch_entity_2
   switch_state_2: !input switch_state_2
 
-  # Helpers
-  current_weekday: "{{ now().strftime('%A').lower() }}"
-  set_mode_on_startup: !input set_mode_on_startup
-
-# =========================
-# TRIGGERS
-# =========================
 trigger:
-  # Day
+  # Day Mode triggers
   - platform: time
     at: !input morning_time
-    id: morning_time
-    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['time','earlier','later'] }}"
+    id: "morning_time"
+    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['time', 'earlier', 'later'] }}"
+  
   - platform: sun
     event: sunrise
     offset: !input sunrise_offset
-    id: sunrise
-    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise','earlier','later'] }}"
-
-  # Evening
+    id: "sunrise"
+    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
+  
+  # Evening Mode triggers
   - platform: time
     at: !input evening_time
-    id: evening_time
-    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['time','earlier','later'] }}"
+    id: "evening_time"
+    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['time', 'earlier', 'later'] }}"
+  
   - platform: sun
     event: sunset
     offset: !input sunset_offset
-    id: sunset
-    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset','earlier','later'] }}"
-
-  # Night
+    id: "sunset"
+    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
+  
+  # Night Mode triggers
   - platform: time
     at: !input night_time
-    id: night_time
-    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['time','earlier','later'] }}"
+    id: "night_time"
+    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['time', 'earlier', 'later'] }}"
+  
   - platform: sun
     event: sunset
     offset: !input night_sunset_offset
-    id: night_sunset
-    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset','earlier','later'] }}"
-
-  # Presence
+    id: "night_sunset"
+    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
+  
+  # Presence triggers
   - platform: state
-    id: presence_away
     entity_id: !input presence_trackers
     from: "home"
-    for:
-      seconds: !input presence_away_delay
-    enabled: "{{ enable_presence_modes and (presence_trackers | default([]) | length > 0) }}"
-
+    id: "presence_away"
+    enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
+  
   - platform: state
-    id: presence_home
     entity_id: !input presence_trackers
     to: "home"
-    for:
-      seconds: !input presence_home_delay
-    enabled: "{{ enable_presence_modes and (presence_trackers | default([]) | length > 0) }}"
-
-  # Buttons (supports zha_event, deconz_event, hue_event)
+    id: "presence_home"
+    enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
+  
+  # Button triggers
   - platform: event
-    id: button_event
-    event_type:
+    event_type: 
       - zha_event
       - deconz_event
       - hue_event
-    enabled: "{{ enable_button_modes }}"
-
-  # Switches (no templating in entity_id/to)
+    id: "button_event"
+    enabled: !input enable_button_modes
+  
+  # Switch triggers
   - platform: state
-    id: switch_1
     entity_id: !input switch_entity_1
     to: !input switch_state_1
+    id: "switch_1"
     enabled: "{{ enable_switch_modes and switch_entity_1 != '' and switch_mode_1 != '' }}"
-
+  
   - platform: state
-    id: switch_2
     entity_id: !input switch_entity_2
     to: !input switch_state_2
+    id: "switch_2"
     enabled: "{{ enable_switch_modes and switch_entity_2 != '' and switch_mode_2 != '' }}"
-
-  # Startup
+  
+  # Startup trigger
   - platform: homeassistant
     event: start
-    id: startup
-    enabled: "{{ set_mode_on_startup }}"
+    id: "startup"
+    enabled: !input set_mode_on_startup
 
 condition: []
 
-# =========================
-# ACTIONS
-# =========================
 action:
   - choose:
-      # === TIME: DAY ===
+      # Day Mode time-based changes
       - conditions:
           - condition: trigger
-            id:
-              - morning_time
-              - sunrise
+            id: 
+              - "morning_time"
+              - "sunrise"
           - condition: template
             value_template: "{{ enable_morning_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
-              {% set t = morning_schedule_type %}
-              {% if t == 'all_days' %} true
-              {% elif t == 'specific_days' %}
-                {{ (morning_days | length == 0) or (current_weekday in morning_days) }}
-              {% elif t == 'schedule_helper' %}
-                {{ (morning_schedule == '') or is_state(morning_schedule,'on') }}
-              {% else %} true {% endif %}
+              {% set schedule_type = morning_schedule_type %}
+              {% if schedule_type == 'all_days' %}
+                true
+              {% elif schedule_type == 'specific_days' %}
+                {% set days = morning_days %}
+                {% set weekday = current_weekday %}
+                {{ days | length == 0 or weekday in days }}
+              {% elif schedule_type == 'schedule_helper' %}
+                {% set schedule_entity = morning_schedule %}
+                {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
           - condition: template
             value_template: >
-              {% set trig = trigger.id %}
-              {% set fixed = today_at(morning_time) %}
-              {% set sun = as_datetime(state_attr('sun.sun','next_rising')) + (strptime(sunrise_offset|string, '%H:%M:%S') - strptime('00:00:00','%H:%M:%S')) %}
-              {% if morning_trigger_type == 'time' %}
-                {{ trig == 'morning_time' }}
-              {% elif morning_trigger_type == 'sunrise' %}
-                {{ trig == 'sunrise' }}
-              {% elif morning_trigger_type == 'earlier' %}
-                {{ (trig == 'morning_time' and fixed <= sun) or (trig == 'sunrise' and sun <= fixed) }}
-              {% elif morning_trigger_type == 'later' %}
-                {{ (trig == 'morning_time' and fixed >= sun) or (trig == 'sunrise' and sun >= fixed) }}
-              {% else %} true {% endif %}
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+              {% set trigger_type = morning_trigger_type %}
+              {% set trigger_id = trigger.id %}
+              {% if trigger_type == 'time' %}
+                {{ trigger_id == 'morning_time' }}
+              {% elif trigger_type == 'sunrise' %}
+                {{ trigger_id == 'sunrise' }}
+              {% elif trigger_type == 'earlier' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(morning_time) %}
+                {% set sunrise_time = as_timestamp(state_attr('sun.sun', 'next_rising')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunrise_offset) %}
+                {% if trigger_id == 'morning_time' %}
+                  {{ fixed_time <= sunrise_time }}
+                {% elif trigger_id == 'sunrise' %}
+                  {{ sunrise_time <= fixed_time }}
+                {% endif %}
+              {% elif trigger_type == 'later' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(morning_time) %}
+                {% set sunrise_time = as_timestamp(state_attr('sun.sun', 'next_rising')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunrise_offset) %}
+                {% if trigger_id == 'morning_time' %}
+                  {{ fixed_time >= sunrise_time }}
+                {% elif trigger_id == 'sunrise' %}
+                  {{ sunrise_time >= fixed_time }}
+                {% endif %}
+              {% endif %}
         sequence:
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Setting {{ morning_mode }} (trigger={{ trigger.id }})"
-                  entity_id: "{{ mode_entity }}"
           - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: !input morning_mode }
-
-      # === TIME: EVENING ===
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input morning_mode
+      
+      # Evening Mode time-based changes
       - conditions:
           - condition: trigger
-            id:
-              - evening_time
-              - sunset
+            id: 
+              - "evening_time"
+              - "sunset"
           - condition: template
             value_template: "{{ enable_evening_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
-              {% set t = evening_schedule_type %}
-              {% if t == 'all_days' %} true
-              {% elif t == 'specific_days' %}
-                {{ (evening_days | length == 0) or (current_weekday in evening_days) }}
-              {% elif t == 'schedule_helper' %}
-                {{ (evening_schedule == '') or is_state(evening_schedule,'on') }}
-              {% else %} true {% endif %}
+              {% set schedule_type = evening_schedule_type %}
+              {% if schedule_type == 'all_days' %}
+                true
+              {% elif schedule_type == 'specific_days' %}
+                {% set days = evening_days %}
+                {% set weekday = current_weekday %}
+                {{ days | length == 0 or weekday in days }}
+              {% elif schedule_type == 'schedule_helper' %}
+                {% set schedule_entity = evening_schedule %}
+                {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
           - condition: template
             value_template: >
-              {% set trig = trigger.id %}
-              {% set fixed = today_at(evening_time) %}
-              {% set sun = as_datetime(state_attr('sun.sun','next_setting')) + (strptime(sunset_offset|string, '%H:%M:%S') - strptime('00:00:00','%H:%M:%S')) %}
-              {% if evening_trigger_type == 'time' %}
-                {{ trig == 'evening_time' }}
-              {% elif evening_trigger_type == 'sunset' %}
-                {{ trig == 'sunset' }}
-              {% elif evening_trigger_type == 'earlier' %}
-                {{ (trig == 'evening_time' and fixed <= sun) or (trig == 'sunset' and sun <= fixed) }}
-              {% elif evening_trigger_type == 'later' %}
-                {{ (trig == 'evening_time' and fixed >= sun) or (trig == 'sunset' and sun >= fixed) }}
-              {% else %} true {% endif %}
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+              {% set trigger_type = evening_trigger_type %}
+              {% set trigger_id = trigger.id %}
+              {% if trigger_type == 'time' %}
+                {{ trigger_id == 'evening_time' }}
+              {% elif trigger_type == 'sunset' %}
+                {{ trigger_id == 'sunset' }}
+              {% elif trigger_type == 'earlier' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(evening_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunset_offset) %}
+                {% if trigger_id == 'evening_time' %}
+                  {{ fixed_time <= sunset_time }}
+                {% elif trigger_id == 'sunset' %}
+                  {{ sunset_time <= fixed_time }}
+                {% endif %}
+              {% elif trigger_type == 'later' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(evening_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunset_offset) %}
+                {% if trigger_id == 'evening_time' %}
+                  {{ fixed_time >= sunset_time }}
+                {% elif trigger_id == 'sunset' %}
+                  {{ sunset_time >= fixed_time }}
+                {% endif %}
+              {% endif %}
         sequence:
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Setting {{ evening_mode }} (trigger={{ trigger.id }})"
-                  entity_id: "{{ mode_entity }}"
           - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: !input evening_mode }
-
-      # === TIME: NIGHT ===
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input evening_mode
+      
+      # Night Mode time-based changes
       - conditions:
           - condition: trigger
-            id:
-              - night_time
-              - night_sunset
+            id: 
+              - "night_time"
+              - "night_sunset"
           - condition: template
             value_template: "{{ enable_night_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
-              {% set t = night_schedule_type %}
-              {% if t == 'all_days' %} true
-              {% elif t == 'specific_days' %}
-                {{ (night_days | length == 0) or (current_weekday in night_days) }}
-              {% elif t == 'schedule_helper' %}
-                {{ (night_schedule == '') or is_state(night_schedule,'on') }}
-              {% else %} true {% endif %}
+              {% set schedule_type = night_schedule_type %}
+              {% if schedule_type == 'all_days' %}
+                true
+              {% elif schedule_type == 'specific_days' %}
+                {% set days = night_days %}
+                {% set weekday = current_weekday %}
+                {{ days | length == 0 or weekday in days }}
+              {% elif schedule_type == 'schedule_helper' %}
+                {% set schedule_entity = night_schedule %}
+                {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
           - condition: template
             value_template: >
-              {% set trig = trigger.id %}
-              {% set fixed = today_at(night_time) %}
-              {% set sun = as_datetime(state_attr('sun.sun','next_setting')) + (strptime(night_sunset_offset|string, '%H:%M:%S') - strptime('00:00:00','%H:%M:%S')) %}
-              {% if night_trigger_type == 'time' %}
-                {{ trig == 'night_time' }}
-              {% elif night_trigger_type == 'sunset' %}
-                {{ trig == 'night_sunset' }}
-              {% elif night_trigger_type == 'earlier' %}
-                {{ (trig == 'night_time' and fixed <= sun) or (trig == 'night_sunset' and sun <= fixed) }}
-              {% elif night_trigger_type == 'later' %}
-                {{ (trig == 'night_time' and fixed >= sun) or (trig == 'night_sunset' and sun >= fixed) }}
-              {% else %} true {% endif %}
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+              {% set trigger_type = night_trigger_type %}
+              {% set trigger_id = trigger.id %}
+              {% if trigger_type == 'time' %}
+                {{ trigger_id == 'night_time' }}
+              {% elif trigger_type == 'sunset' %}
+                {{ trigger_id == 'night_sunset' }}
+              {% elif trigger_type == 'earlier' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(night_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=night_sunset_offset) %}
+                {% if trigger_id == 'night_time' %}
+                  {{ fixed_time <= sunset_time }}
+                {% elif trigger_id == 'night_sunset' %}
+                  {{ sunset_time <= fixed_time }}
+                {% endif %}
+              {% elif trigger_type == 'later' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(night_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=night_sunset_offset) %}
+                {% if trigger_id == 'night_time' %}
+                  {{ fixed_time >= sunset_time }}
+                {% elif trigger_id == 'night_sunset' %}
+                  {{ sunset_time >= fixed_time }}
+                {% endif %}
+              {% else %}
+                true
+              {% endif %}
         sequence:
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Setting {{ night_mode }} (trigger={{ trigger.id }})"
-                  entity_id: "{{ mode_entity }}"
           - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: !input night_mode }
-
-      # === PRESENCE: AWAY ===
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input night_mode
+      
+      # Presence-based mode changes - Away
       - conditions:
           - condition: trigger
-            id: presence_away
+            id: "presence_away"
           - condition: template
             value_template: >
               {% set trackers = presence_trackers %}
               {% set logic = away_trigger_logic %}
-              {% if not trackers or (trackers | length == 0) %}
-                false
-              {% else %}
-                {% set homes = expand(trackers) | selectattr('state','eq','home') | list | length %}
+              {% if trackers %}
                 {% if logic == 'all_away' %}
-                  {{ homes == 0 }}
+                  {{ expand(trackers) | selectattr('state', 'eq', 'home') | list | length == 0 }}
                 {% elif logic == 'any_away' %}
-                  {{ expand(trackers) | selectattr('state','ne','home') | list | length > 0 }}
-                {% else %} false {% endif %}
+                  {{ expand(trackers) | selectattr('state', 'ne', 'home') | list | length > 0 }}
+                {% else %}
+                  false
+                {% endif %}
+              {% else %}
+                false
               {% endif %}
           - condition: template
             value_template: >
-              {% if guest_mode_sensor != '' %} {{ not is_state(guest_mode_sensor,'on') }}
-              {% else %} true {% endif %}
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+              {% set guest_sensor = guest_mode_sensor %}
+              {% if guest_sensor != '' %}
+                {{ not is_state(guest_sensor, 'on') }}
+              {% else %}
+                true
+              {% endif %}
         sequence:
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Presence -> Away"
-                  entity_id: "{{ mode_entity }}"
           - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: !input away_mode }
-
-      # === PRESENCE: RETURN ===
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input away_mode
+      
+      # Presence-based mode changes - Return Home
       - conditions:
           - condition: trigger
-            id: presence_home
+            id: "presence_home"
           - condition: template
             value_template: "{{ current_mode == away_mode }}"
           - condition: template
             value_template: >
-              {% set ents = presence_trackers | default([]) %}
+              {% set tracker_entities = presence_trackers | default([]) %}
               {% set logic = return_trigger_logic %}
-              {% if ents | length == 0 %} false
+              {% if tracker_entities | length == 0 %}
+                false
               {% elif logic == 'any_home' %}
-                {{ expand(ents) | selectattr('state','eq','home') | list | length > 0 }}
+                {{ expand(tracker_entities) | selectattr('state', 'eq', 'home') | list | length > 0 }}
               {% elif logic == 'all_home' %}
-                {{ expand(ents) | selectattr('state','eq','home') | list | length == (ents | length) }}
-              {% else %} false {% endif %}
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+                {{ expand(tracker_entities) | selectattr('state', 'eq', 'home') | list | length == tracker_entities | length }}
+              {% else %}
+                false
+              {% endif %}
         sequence:
           - choose:
               - conditions:
                   - condition: template
                     value_template: "{{ return_from_away_mode == 'time_based' }}"
                 sequence:
-                  - variables:
-                      nowdt: "{{ now() }}"
-                      m: "{{ today_at(morning_time) }}"
-                      e: "{{ today_at(evening_time) }}"
-                      n: "{{ today_at(night_time) }}"
-                      chosen: >
-                        {% if now() >= today_at(night_time) or now() < today_at(morning_time) %}
+                  - service: input_select.select_option
+                    target:
+                      entity_id: !input mode_selector
+                    data:
+                      option: >
+                        {% set nowdt = now() %}
+                        {% set m = today_at(morning_time) %}
+                        {% set e = today_at(evening_time) %}
+                        {% set n = today_at(night_time) %}
+                        {% if nowdt >= n or nowdt < m %}
                           {{ night_mode }}
-                        {% elif now() >= today_at(evening_time) %}
+                        {% elif nowdt >= e %}
                           {{ evening_mode }}
                         {% else %}
                           {{ morning_mode }}
                         {% endif %}
-                  - if:
-                      - condition: template
-                        value_template: "{{ enable_debug }}"
-                    then:
-                      - service: logbook.log
-                        data:
-                          name: "Mode Manager"
-                          message: "Return from Away -> {{ chosen }}"
-                          entity_id: "{{ mode_entity }}"
-                  - service: input_select.select_option
-                    target: { entity_id: !input mode_selector }
-                    data:
-                      option: "{{ chosen }}"
             default:
-              - if:
-                  - condition: template
-                    value_template: "{{ enable_debug }}"
-                then:
-                  - service: logbook.log
-                    data:
-                      name: "Mode Manager"
-                      message: "Return from Away -> {{ return_mode }}"
-                      entity_id: "{{ mode_entity }}"
               - service: input_select.select_option
-                target: { entity_id: !input mode_selector }
-                data: { option: !input return_mode }
-
-      # === BUTTONS ===
-      - conditions:
-          - condition: trigger
-            id: button_event
-          - condition: template
-            value_template: >
-              {# normalize cmd across zha/deconz/hue #}
-              {% set d = trigger.event.data %}
-              {% set cmd = d.command if 'command' in d else (d.event if 'event' in d else (d.button if 'button' in d else None)) %}
-              {% set cmds = [button_day_event, button_evening_event, button_night_event, button_away_event] | reject('equalto','') | list %}
-              {{ cmd in cmds }}
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
-        sequence:
-          - variables:
-              _d: "{{ trigger.event.data }}"
-              _cmd: >
-                {% set d = trigger.event.data %}
-                {{ d.command if 'command' in d else (d.event if 'event' in d else (d.button if 'button' in d else None)) }}
-              _mode: >
-                {% if _cmd == button_day_event %} {{ morning_mode }}
-                {% elif _cmd == button_evening_event %} {{ evening_mode }}
-                {% elif _cmd == button_night_event %} {{ night_mode }}
-                {% elif _cmd == button_away_event %} {{ away_mode }}
-                {% else %} {{ current_mode }} {% endif %}
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
+                target:
+                  entity_id: !input mode_selector
                 data:
-                  name: "Mode Manager"
-                  message: "Button -> {{ _cmd }} => {{ _mode }}"
-                  entity_id: "{{ mode_entity }}"
-          - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: "{{ _mode }}" }
-
-      # === SWITCHES ===
+                  option: !input return_mode
+      
+      # Button-based mode changes
       - conditions:
           - condition: trigger
-            id: switch_1
+            id: "button_event"
           - condition: template
             value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+              {% set event_data = trigger.event.data %}
+              {% set command = event_data.command %}
+              {% set day_event = button_day_event %}
+              {% set evening_event = button_evening_event %}
+              {% set night_event = button_night_event %}
+              {% set away_event = button_away_event %}
+              {{ command == day_event or command == evening_event or command == night_event or command == away_event }}
         sequence:
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Switch 1 -> {{ switch_mode_1 }}"
-                  entity_id: "{{ mode_entity }}"
           - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: !input switch_mode_1 }
-
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: >
+                {% set event_data = trigger.event.data %}
+                {% set command = event_data.command %}
+                {% set day_event = button_day_event %}
+                {% set evening_event = button_evening_event %}
+                {% set night_event = button_night_event %}
+                {% set away_event = button_away_event %}
+                {% if command == day_event and day_event != '' %}
+                  {{ morning_mode }}
+                {% elif command == evening_event and evening_event != '' %}
+                  {{ evening_mode }}
+                {% elif command == night_event and night_event != '' %}
+                  {{ night_mode }}
+                {% elif command == away_event and away_event != '' %}
+                  {{ away_mode }}
+                {% endif %}
+      
+      # Switch-based mode changes
       - conditions:
           - condition: trigger
-            id: switch_2
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+            id: "switch_1"
         sequence:
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Switch 2 -> {{ switch_mode_2 }}"
-                  entity_id: "{{ mode_entity }}"
           - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: !input switch_mode_2 }
-
-      # === STARTUP ===
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input switch_mode_1
+      
       - conditions:
           - condition: trigger
-            id: startup
-          - condition: template
-            value_template: >
-              {% if hold_override != '' %} {{ not is_state(hold_override,'on') }}
-              {% else %} true {% endif %}
+            id: "switch_2"
         sequence:
-          - variables:
-              chosen: >
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input switch_mode_2
+      
+      # Startup mode setting
+      - conditions:
+          - condition: trigger
+            id: "startup"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: >
                 {% set nowdt = now() %}
                 {% set m = today_at(morning_time) %}
                 {% set e = today_at(evening_time) %}
@@ -1039,18 +1005,6 @@ action:
                 {% else %}
                   {{ morning_mode }}
                 {% endif %}
-          - if:
-              - condition: template
-                value_template: "{{ enable_debug }}"
-            then:
-              - service: logbook.log
-                data:
-                  name: "Mode Manager"
-                  message: "Startup -> {{ chosen }}"
-                  entity_id: "{{ mode_entity }}"
-          - service: input_select.select_option
-            target: { entity_id: !input mode_selector }
-            data: { option: "{{ chosen }}" }
 
 mode: queued
 max: 10
