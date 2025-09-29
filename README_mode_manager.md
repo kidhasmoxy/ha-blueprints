@@ -67,19 +67,30 @@ Enable automatic mode changes based on time with clear trigger options:
 
 #### Day Mode Configuration
 - **Day Mode**: Enter the exact mode name from your input_select for daytime (e.g., "Day", "Morning")
-- **Day Mode Trigger**: Choose between "Fixed Time" or "Sunrise (with optional offset)"
-- **Day Mode - Fixed Time**: Specific time to trigger Day mode (only used if "Fixed Time" selected)
-- **Day Mode - Sunrise Offset**: Minutes before (-) or after (+) sunrise (only used if "Sunrise" selected)
+- **Day Mode Trigger**: Choose how to trigger Day mode:
+  - "Fixed Time" - Use only the fixed time
+  - "Sunrise (with optional offset)" - Use only sunrise with offset
+  - "Earlier of Fixed Time or Sunrise" - Trigger at whichever comes first
+  - "Later of Fixed Time or Sunrise" - Trigger at whichever comes last
+- **Day Mode - Fixed Time**: Specific time to trigger Day mode
+- **Day Mode - Sunrise Offset**: Minutes before (-) or after (+) sunrise
+- **Day Mode - Days of Week**: Select specific days for Day mode (leave empty for all days)
 
 #### Evening Mode Configuration  
 - **Evening Mode**: Enter the exact mode name from your input_select for evening (e.g., "Evening", "Dusk")
-- **Evening Mode Trigger**: Choose between "Fixed Time" or "Sunset (with optional offset)"
-- **Evening Mode - Fixed Time**: Specific time to trigger Evening mode (only used if "Fixed Time" selected)
-- **Evening Mode - Sunset Offset**: Minutes before (-) or after (+) sunset (only used if "Sunset" selected)
+- **Evening Mode Trigger**: Choose how to trigger Evening mode:
+  - "Fixed Time" - Use only the fixed time
+  - "Sunset (with optional offset)" - Use only sunset with offset
+  - "Earlier of Fixed Time or Sunset" - Trigger at whichever comes first
+  - "Later of Fixed Time or Sunset" - Trigger at whichever comes last
+- **Evening Mode - Fixed Time**: Specific time to trigger Evening mode
+- **Evening Mode - Sunset Offset**: Minutes before (-) or after (+) sunset
+- **Evening Mode - Days of Week**: Select specific days for Evening mode (leave empty for all days)
 
 #### Night Mode Configuration
 - **Night Mode**: Enter the exact mode name from your input_select for night (e.g., "Night", "Sleep")
 - **Night Mode - Fixed Time**: Specific time to trigger Night mode (always uses fixed time)
+- **Night Mode - Days of Week**: Select specific days for Night mode (leave empty for all days)
 
 #### Additional Settings
 - **Skip Time Changes for These Modes**: Comma-separated list of modes that should not be changed by time triggers (e.g., "Away,Vacation,Party")
@@ -152,6 +163,40 @@ For a more natural lighting schedule:
    - Trigger: "Sunset (with optional offset)"
    - Sunset Offset: -15 (triggers 15 minutes before sunset)
 3. Night Mode still uses fixed time: 22:00:00
+
+### Advanced Time Setup with Earlier/Later Logic
+
+For more sophisticated scheduling:
+
+1. **Day Mode - Earlier of 7 AM or Sunrise + 10 minutes**:
+   - Name: "Day"
+   - Trigger: "Earlier of Fixed Time or Sunrise"
+   - Fixed Time: 07:00:00
+   - Sunrise Offset: 10
+   - Result: Switches to Day mode at 7 AM in winter, but earlier in summer when sunrise + 10 min is before 7 AM
+
+2. **Evening Mode - Later of 6 PM or Sunset**:
+   - Name: "Evening"
+   - Trigger: "Later of Fixed Time or Sunset"
+   - Fixed Time: 18:00:00
+   - Sunset Offset: 0
+   - Result: Never switches to Evening before 6 PM, but waits for sunset if it's later
+
+### Weekday/Weekend Schedules
+
+Different schedules for different days:
+
+1. **Weekday Schedule**:
+   - Day Mode: Days = Monday, Tuesday, Wednesday, Thursday, Friday
+   - Fixed Time: 06:30:00 (early for work)
+
+2. **Weekend Schedule**:
+   - Day Mode: Days = Saturday, Sunday  
+   - Fixed Time: 08:00:00 (sleep in on weekends)
+
+3. **Night Mode**:
+   - Sunday-Thursday: 22:00:00 (early bedtime for work nights)
+   - Friday-Saturday: 23:30:00 (later bedtime for weekends)
 
 ### Presence + Time Setup
 

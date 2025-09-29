@@ -45,23 +45,50 @@ blueprint:
               value: "time"
             - label: "Sunrise (with optional offset)"
               value: "sunrise"
+            - label: "Earlier of Fixed Time or Sunrise"
+              value: "earlier"
+            - label: "Later of Fixed Time or Sunrise"
+              value: "later"
     
     morning_time:
       name: "Day Mode - Fixed Time"
-      description: "Fixed time to switch to Day mode (only used if 'Fixed Time' selected above)"
+      description: "Fixed time to switch to Day mode"
       default: "07:00:00"
       selector:
         time: {}
     
     sunrise_offset:
       name: "Day Mode - Sunrise Offset (minutes)"
-      description: "Minutes before (-) or after (+) sunrise to trigger Day mode (only used if 'Sunrise' selected above)"
+      description: "Minutes before (-) or after (+) sunrise"
       default: 0
       selector:
         number:
           min: -120
           max: 120
           step: 1
+    
+    morning_days:
+      name: "Day Mode - Days of Week"
+      description: "Select days when Day mode should be triggered (leave empty for all days)"
+      default: []
+      selector:
+        select:
+          options:
+            - label: "Monday"
+              value: "monday"
+            - label: "Tuesday"
+              value: "tuesday"
+            - label: "Wednesday"
+              value: "wednesday"
+            - label: "Thursday"
+              value: "thursday"
+            - label: "Friday"
+              value: "friday"
+            - label: "Saturday"
+              value: "saturday"
+            - label: "Sunday"
+              value: "sunday"
+          multiple: true
     
     # Evening Mode Settings
     evening_mode:
@@ -82,23 +109,50 @@ blueprint:
               value: "time"
             - label: "Sunset (with optional offset)"
               value: "sunset"
+            - label: "Earlier of Fixed Time or Sunset"
+              value: "earlier"
+            - label: "Later of Fixed Time or Sunset"
+              value: "later"
     
     evening_time:
       name: "Evening Mode - Fixed Time"
-      description: "Fixed time to switch to Evening mode (only used if 'Fixed Time' selected above)"
+      description: "Fixed time to switch to Evening mode"
       default: "18:00:00"
       selector:
         time: {}
     
     sunset_offset:
       name: "Evening Mode - Sunset Offset (minutes)"
-      description: "Minutes before (-) or after (+) sunset to trigger Evening mode (only used if 'Sunset' selected above)"
+      description: "Minutes before (-) or after (+) sunset"
       default: 0
       selector:
         number:
           min: -120
           max: 120
           step: 1
+    
+    evening_days:
+      name: "Evening Mode - Days of Week"
+      description: "Select days when Evening mode should be triggered (leave empty for all days)"
+      default: []
+      selector:
+        select:
+          options:
+            - label: "Monday"
+              value: "monday"
+            - label: "Tuesday"
+              value: "tuesday"
+            - label: "Wednesday"
+              value: "wednesday"
+            - label: "Thursday"
+              value: "thursday"
+            - label: "Friday"
+              value: "friday"
+            - label: "Saturday"
+              value: "saturday"
+            - label: "Sunday"
+              value: "sunday"
+          multiple: true
     
     # Night Mode Settings
     night_mode:
@@ -114,6 +168,29 @@ blueprint:
       default: "22:00:00"
       selector:
         time: {}
+    
+    night_days:
+      name: "Night Mode - Days of Week"
+      description: "Select days when Night mode should be triggered (leave empty for all days)"
+      default: []
+      selector:
+        select:
+          options:
+            - label: "Monday"
+              value: "monday"
+            - label: "Tuesday"
+              value: "tuesday"
+            - label: "Wednesday"
+              value: "wednesday"
+            - label: "Thursday"
+              value: "thursday"
+            - label: "Friday"
+              value: "friday"
+            - label: "Saturday"
+              value: "saturday"
+            - label: "Sunday"
+              value: "sunday"
+          multiple: true
     
     skip_time_modes:
       name: Skip Time Changes for These Modes
@@ -376,6 +453,10 @@ variables:
   evening_mode: !input evening_mode
   night_mode: !input night_mode
   return_mode: !input return_mode
+  morning_days: !input morning_days
+  evening_days: !input evening_days
+  night_days: !input night_days
+  current_weekday: "{{ now().strftime('%A').lower() }}"
   # Button mappings
   button_mappings:
     - mode: !input button_mode_1
@@ -400,25 +481,25 @@ trigger:
   - platform: time
     at: !input morning_time
     id: "morning_time"
-    enabled: "{{ enable_time_modes and morning_trigger_type == 'time' }}"
+    enabled: "{{ enable_time_modes and morning_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: sun
     event: sunrise
     offset: !input sunrise_offset
     id: "sunrise"
-    enabled: "{{ enable_time_modes and morning_trigger_type == 'sunrise' }}"
+    enabled: "{{ enable_time_modes and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
   # Evening Mode triggers
   - platform: time
     at: !input evening_time
     id: "evening_time"
-    enabled: "{{ enable_time_modes and evening_trigger_type == 'time' }}"
+    enabled: "{{ enable_time_modes and evening_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: sun
     event: sunset
     offset: !input sunset_offset
     id: "sunset"
-    enabled: "{{ enable_time_modes and evening_trigger_type == 'sunset' }}"
+    enabled: "{{ enable_time_modes and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
   # Night Mode trigger (always fixed time)
   - platform: time
@@ -473,7 +554,7 @@ condition: []
 
 action:
   - choose:
-      # Time-based mode changes
+      # Day Mode time-based changes
       - conditions:
           - condition: trigger
             id: 
@@ -481,6 +562,38 @@ action:
               - "sunrise"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
+          - condition: template
+            value_template: >
+              {% set days = morning_days %}
+              {% set weekday = current_weekday %}
+              {{ days | length == 0 or weekday in days }}
+          - condition: template
+            value_template: >
+              {% set trigger_type = morning_trigger_type %}
+              {% set trigger_id = trigger.id %}
+              {% if trigger_type == 'time' %}
+                {{ trigger_id == 'morning_time' }}
+              {% elif trigger_type == 'sunrise' %}
+                {{ trigger_id == 'sunrise' }}
+              {% elif trigger_type == 'earlier' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(morning_time) %}
+                {% set sunrise_time = as_timestamp(state_attr('sun.sun', 'next_rising')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunrise_offset) %}
+                {% if trigger_id == 'morning_time' %}
+                  {{ fixed_time <= sunrise_time }}
+                {% elif trigger_id == 'sunrise' %}
+                  {{ sunrise_time <= fixed_time }}
+                {% endif %}
+              {% elif trigger_type == 'later' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(morning_time) %}
+                {% set sunrise_time = as_timestamp(state_attr('sun.sun', 'next_rising')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunrise_offset) %}
+                {% if trigger_id == 'morning_time' %}
+                  {{ fixed_time >= sunrise_time }}
+                {% elif trigger_id == 'sunrise' %}
+                  {{ sunrise_time >= fixed_time }}
+                {% endif %}
+              {% endif %}
         sequence:
           - service: input_select.select_option
             target:
@@ -488,6 +601,7 @@ action:
             data:
               option: !input morning_mode
       
+      # Evening Mode time-based changes
       - conditions:
           - condition: trigger
             id: 
@@ -495,6 +609,38 @@ action:
               - "sunset"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
+          - condition: template
+            value_template: >
+              {% set days = evening_days %}
+              {% set weekday = current_weekday %}
+              {{ days | length == 0 or weekday in days }}
+          - condition: template
+            value_template: >
+              {% set trigger_type = evening_trigger_type %}
+              {% set trigger_id = trigger.id %}
+              {% if trigger_type == 'time' %}
+                {{ trigger_id == 'evening_time' }}
+              {% elif trigger_type == 'sunset' %}
+                {{ trigger_id == 'sunset' }}
+              {% elif trigger_type == 'earlier' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(evening_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunset_offset) %}
+                {% if trigger_id == 'evening_time' %}
+                  {{ fixed_time <= sunset_time }}
+                {% elif trigger_id == 'sunset' %}
+                  {{ sunset_time <= fixed_time }}
+                {% endif %}
+              {% elif trigger_type == 'later' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(evening_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=sunset_offset) %}
+                {% if trigger_id == 'evening_time' %}
+                  {{ fixed_time >= sunset_time }}
+                {% elif trigger_id == 'sunset' %}
+                  {{ sunset_time >= fixed_time }}
+                {% endif %}
+              {% endif %}
         sequence:
           - service: input_select.select_option
             target:
@@ -502,11 +648,17 @@ action:
             data:
               option: !input evening_mode
       
+      # Night Mode time-based changes
       - conditions:
           - condition: trigger
             id: "night_time"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
+          - condition: template
+            value_template: >
+              {% set days = night_days %}
+              {% set weekday = current_weekday %}
+              {{ days | length == 0 or weekday in days }}
         sequence:
           - service: input_select.select_option
             target:
