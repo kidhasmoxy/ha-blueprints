@@ -838,13 +838,13 @@ variables:
 trigger:
   # Motion sensor activation
   - platform: state
-    entity_id: !input activation_triggers_section.motion_sensors
+    entity_id: !input motion_sensors
     to: "on"
     id: motion_on
   
   # Motion sensor deactivation with timeout
   - platform: state
-    entity_id: !input activation_triggers_section.motion_sensors
+    entity_id: !input motion_sensors
     to: "off"
     for:
       minutes: "{{ motion_timeout }}"
@@ -852,13 +852,13 @@ trigger:
   
   # Contact sensor activation
   - platform: state
-    entity_id: !input activation_triggers_section.contact_sensors
+    entity_id: !input contact_sensors
     to: "on"
     id: contact_open
   
   # Contact sensor deactivation
   - platform: state
-    entity_id: !input activation_triggers_section.contact_sensors
+    entity_id: !input contact_sensors
     to: "off"
     id: contact_closed
   
@@ -873,7 +873,7 @@ trigger:
   
   # State changes for button devices
   - platform: state
-    entity_id: !input activation_triggers_section.button_devices
+    entity_id: !input button_devices
     id: button_state_change
   
   # Mode changes
