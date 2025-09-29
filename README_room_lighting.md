@@ -15,8 +15,10 @@ This Home Assistant blueprint replicates the comprehensive functionality of Hubi
 
 ### ✅ Core Hubitat Room Lighting Features
 - **Multiple Activation Methods**: Motion sensors, contact sensors, buttons/switches
-- **Per-Mode Settings**: Different brightness and color temperature for Away/Day/Evening/Night modes
+- **Light Grouping**: Up to 3 independent light groups with individual settings
+- **Per-Group Per-Mode Settings**: Different brightness and color temperature for each group in each mode
 - **Advanced Turn-Off Logic**: Configurable timeouts per mode, require all sensors clear
+- **Alternative Turn-Off Devices**: Turn off additional devices during turn-off events
 - **Illuminance Control**: Prevent activation during bright conditions
 - **Fade Times**: Smooth transitions for all light changes
 - **Activation Delays**: Configurable delays before activation
@@ -73,11 +75,17 @@ input_select:
 4. **Smart Combination**: The blueprint automatically combines your selections from both options
 
 **Device Types Available**:
-- **Lights to Control**: Lights, switches, and dimmers
+- **Light Groups (1-3)**: Organize lights into up to 3 groups with individual settings
 - **Motion Sensors**: Motion detection devices
 - **Contact Sensors**: Door/window sensors (optional)
 - **Button Devices**: Buttons or switches for manual control (optional)
+- **Alternative Turn-Off Devices**: Additional devices to turn off (TVs, fans, etc.)
 - **Additional Sensors**: Illuminance, TV/media player, and sleep sensors
+
+**Light Grouping Examples**:
+- **Group 1**: Main ceiling lights (bright, cool white during day)
+- **Group 2**: Accent/table lamps (dimmer, warm white)
+- **Group 3**: Night lights (very dim, red/warm for nighttime)
 
 **Usage Tip**: Most users will only need the area-filtered selectors. Use the "All Areas" selectors only when you need devices from other rooms (e.g., hallway motion sensor for bedroom lights).
 
@@ -87,12 +95,26 @@ input_select:
 - **Enable Button Activation**: Turn on for button/switch control
 - **Illuminance Control**: Prevent activation during bright conditions
 
-### Per-Mode Light Settings
-Configure different brightness levels for each mode:
-- **Away Mode**: Lower brightness for security/energy savings (default: 30%)
-- **Day Mode**: Comfortable daytime brightness (default: 75%)
-- **Evening Mode**: Bright evening lighting (default: 85%)
-- **Night Mode**: Dim lighting for nighttime (default: 20%)
+### Per-Group Per-Mode Light Settings
+Configure different brightness and color temperature for each light group in each mode:
+
+**Light Group 1 (Main Lights)**:
+- **Away**: 30% brightness, 3000K (security lighting)
+- **Day**: 75% brightness, 4000K (productive lighting)
+- **Evening**: 85% brightness, 3000K (comfortable lighting)
+- **Night**: 20% brightness, 2200K (minimal lighting)
+
+**Light Group 2 (Accent Lights)**:
+- **Away**: 20% brightness, 2700K (subtle presence)
+- **Day**: 50% brightness, 3000K (ambient support)
+- **Evening**: 70% brightness, 2700K (cozy atmosphere)
+- **Night**: 10% brightness, 2200K (gentle accent)
+
+**Light Group 3 (Night Lights)**:
+- **Away**: Off (0% brightness)
+- **Day**: Off (0% brightness)
+- **Evening**: 30% brightness, 2200K (pathway lighting)
+- **Night**: 5% brightness, 2000K (navigation lighting)
 
 ### Color Temperature (Optional)
 Enable automatic color temperature adjustment:
@@ -234,11 +256,34 @@ Living Room: Mode changed to night, adjusting lights
 - Advanced debug logging
 - TV and sleep mode integration
 
-### Limitations vs Hubitat 📝
-- No built-in scene transitions (use separate automations)
-- No direct Zigbee group messaging (uses HA services)
-- Simplified UI compared to Hubitat's custom interface
-- No built-in activator device (use events instead)
+### Missing Hubitat Features (Ranked by Usage Likelihood) 📝
+
+**High Priority (Commonly Used)**:
+1. **Scene Transitions** - Gradual transitions between lighting states over time
+2. **Per-Device Activation Settings** - Individual on/off/dimming settings per light
+3. **Activator Device Creation** - Virtual device for voice control and grouping
+4. **Time-Based Periods** - Alternative to modes using time periods instead
+5. **Re-Capture Device Settings** - Button to capture current light states
+
+**Medium Priority (Moderately Used)**:
+6. **Vacancy Mode** - Turn off only automation (no activation)
+7. **Multiple Mode Support** - More than 4 modes with custom names
+8. **Stay Minutes Per Mode** - Different motion timeouts per mode (partially implemented)
+9. **Alternative Turn Off Methods** - Switches, dimmers, or other devices for turn off
+10. **Device State Validation** - "Allow devices on/off irrespective of reported state"
+
+**Low Priority (Rarely Used)**:
+11. **Zigbee Group Messaging** - Direct Zigbee commands for faster response
+12. **Scene Import** - Import from Groups and Scenes app
+13. **Create Transition Effects** - Custom transition animations
+14. **Advanced Override Logic** - Complex manual override detection
+15. **Device Fade Time Override** - Per-device transition times
+
+**Workarounds Available**:
+- **Scene Transitions**: Use separate HA scene automations
+- **Activator Device**: Use blueprint events with helper switches
+- **Time Periods**: Use HA time-based automations to change modes
+- **Zigbee Groups**: Use HA light groups for similar performance
 
 ## Advanced Customization
 

@@ -6,7 +6,9 @@ blueprint:
     advanced conditions, fade times, delays, and sophisticated turn-off logic.
   domain: automation
   input:
-    # Basic Configuration
+    # ==========================================
+    # ROOM SETUP
+    # ==========================================
     area_selector:
       name: Area (Optional)
       description: Select an area to automatically populate room name and suggest devices
@@ -21,10 +23,21 @@ blueprint:
       selector:
         text: {}
     
-    # Device Selection (Area Filtered)
-    lights_to_control:
-      name: Lights to Control (Area Filtered)
-      description: Select lights from the selected area (recommended)
+    # ==========================================
+    # DEVICES TO AUTOMATE
+    # ==========================================
+    
+    # Light Group 1
+    light_group_1_name:
+      name: Light Group 1 Name
+      description: Name for the first group of lights (e.g., "Main Lights")
+      default: "Main Lights"
+      selector:
+        text: {}
+    
+    light_group_1_entities:
+      name: Light Group 1 - Entities (Area Filtered)
+      description: Select lights for Group 1 from the selected area
       default: {}
       selector:
         target:
@@ -34,10 +47,9 @@ blueprint:
             - domain: fan
           area: !input area_selector
     
-    # Alternative Device Selection (All Devices)
-    lights_to_control_all:
-      name: Lights to Control (All Devices)
-      description: Select lights from any area (use if area filtering is not desired)
+    light_group_1_entities_all:
+      name: Light Group 1 - Entities (All Areas)
+      description: Select lights for Group 1 from any area
       default: {}
       selector:
         target:
@@ -46,7 +58,71 @@ blueprint:
             - domain: switch
             - domain: fan
     
-    # Activation Triggers (Area Filtered)
+    # Light Group 2
+    light_group_2_name:
+      name: Light Group 2 Name (Optional)
+      description: Name for the second group of lights (e.g., "Accent Lights")
+      default: ""
+      selector:
+        text: {}
+    
+    light_group_2_entities:
+      name: Light Group 2 - Entities (Area Filtered)
+      description: Select lights for Group 2 from the selected area
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+          area: !input area_selector
+    
+    light_group_2_entities_all:
+      name: Light Group 2 - Entities (All Areas)
+      description: Select lights for Group 2 from any area
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+    
+    # Light Group 3
+    light_group_3_name:
+      name: Light Group 3 Name (Optional)
+      description: Name for the third group of lights (e.g., "Night Lights")
+      default: ""
+      selector:
+        text: {}
+    
+    light_group_3_entities:
+      name: Light Group 3 - Entities (Area Filtered)
+      description: Select lights for Group 3 from the selected area
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+          area: !input area_selector
+    
+    light_group_3_entities_all:
+      name: Light Group 3 - Entities (All Areas)
+      description: Select lights for Group 3 from any area
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+    
+    # ==========================================
+    # MEANS TO ACTIVATE
+    # ==========================================
     motion_sensors:
       name: Motion Sensors (Area Filtered)
       description: Motion sensors from the selected area (recommended)
@@ -60,7 +136,7 @@ blueprint:
     
     motion_sensors_all:
       name: Motion Sensors (All Areas)
-      description: Motion sensors from any area (use if area filtering is not desired)
+      description: Motion sensors from any area (for cross-room setups)
       default: {}
       selector:
         target:
@@ -84,7 +160,7 @@ blueprint:
     
     contact_sensors_all:
       name: Contact Sensors (All Areas)
-      description: Contact sensors from any area (use if area filtering is not desired)
+      description: Contact sensors from any area (for cross-room setups)
       default: {}
       selector:
         target:
@@ -109,7 +185,7 @@ blueprint:
     
     button_devices_all:
       name: Button Devices (All Areas)
-      description: Button devices from any area (use if area filtering is not desired)
+      description: Button devices from any area (for cross-room setups)
       default: {}
       selector:
         target:
@@ -131,14 +207,16 @@ blueprint:
     
     illuminance_sensor_all:
       name: Illuminance Sensor (All Areas)
-      description: Light sensor from any area (use if area filtering is not desired)
+      description: Light sensor from any area (for cross-room setups)
       default: {}
       selector:
         entity:
           domain: sensor
           device_class: illuminance
     
-    # Activation Settings
+    # ==========================================
+    # ACTIVATION OPTIONS
+    # ==========================================
     enable_motion_activation:
       name: Enable Motion Activation
       description: Activate lights when motion is detected
@@ -160,7 +238,6 @@ blueprint:
       selector:
         boolean: {}
     
-    # Illuminance Control
     enable_illuminance_control:
       name: Enable Illuminance Control
       description: Only activate if illuminance is below threshold
@@ -179,10 +256,14 @@ blueprint:
           step: 1
           mode: box
     
-    # Per-Mode Light Settings
-    away_brightness:
-      name: Away Mode Brightness (%)
-      description: Brightness level when in Away mode
+    # ==========================================
+    # LIGHTING PERIODS (PER-GROUP PER-MODE SETTINGS)
+    # ==========================================
+    
+    # Light Group 1 Settings
+    group_1_away_brightness:
+      name: "Group 1: Away Mode Brightness (%)"
+      description: Brightness level for Group 1 when in Away mode
       default: 30
       selector:
         number:
@@ -191,9 +272,9 @@ blueprint:
           step: 1
           mode: box
     
-    day_brightness:
-      name: Day Mode Brightness (%)
-      description: Brightness level when in Day mode
+    group_1_day_brightness:
+      name: "Group 1: Day Mode Brightness (%)"
+      description: Brightness level for Group 1 when in Day mode
       default: 75
       selector:
         number:
@@ -202,9 +283,9 @@ blueprint:
           step: 1
           mode: box
     
-    evening_brightness:
-      name: Evening Mode Brightness (%)
-      description: Brightness level when in Evening mode
+    group_1_evening_brightness:
+      name: "Group 1: Evening Mode Brightness (%)"
+      description: Brightness level for Group 1 when in Evening mode
       default: 85
       selector:
         number:
@@ -213,9 +294,9 @@ blueprint:
           step: 1
           mode: box
     
-    night_brightness:
-      name: Night Mode Brightness (%)
-      description: Brightness level when in Night mode
+    group_1_night_brightness:
+      name: "Group 1: Night Mode Brightness (%)"
+      description: Brightness level for Group 1 when in Night mode
       default: 20
       selector:
         number:
@@ -224,16 +305,107 @@ blueprint:
           step: 1
           mode: box
     
-    # Color Temperature Settings
+    # Light Group 2 Settings
+    group_2_away_brightness:
+      name: "Group 2: Away Mode Brightness (%)"
+      description: Brightness level for Group 2 when in Away mode
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    group_2_day_brightness:
+      name: "Group 2: Day Mode Brightness (%)"
+      description: Brightness level for Group 2 when in Day mode (0 = off)
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    group_2_evening_brightness:
+      name: "Group 2: Evening Mode Brightness (%)"
+      description: Brightness level for Group 2 when in Evening mode (0 = off)
+      default: 70
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    group_2_night_brightness:
+      name: "Group 2: Night Mode Brightness (%)"
+      description: Brightness level for Group 2 when in Night mode (0 = off)
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    # Light Group 3 Settings
+    group_3_away_brightness:
+      name: "Group 3: Away Mode Brightness (%)"
+      description: Brightness level for Group 3 when in Away mode (0 = off)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    group_3_day_brightness:
+      name: "Group 3: Day Mode Brightness (%)"
+      description: Brightness level for Group 3 when in Day mode (0 = off)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    group_3_evening_brightness:
+      name: "Group 3: Evening Mode Brightness (%)"
+      description: Brightness level for Group 3 when in Evening mode (0 = off)
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    group_3_night_brightness:
+      name: "Group 3: Night Mode Brightness (%)"
+      description: Brightness level for Group 3 when in Night mode (0 = off)
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+    
+    # Color Temperature Settings (Per-Group)
     enable_color_temp:
       name: Enable Color Temperature Control
-      description: Adjust color temperature based on mode
+      description: Adjust color temperature based on mode for all groups
       default: false
       selector:
         boolean: {}
     
-    away_color_temp:
-      name: Away Mode Color Temperature (K)
+    # Group 1 Color Temperature
+    group_1_away_color_temp:
+      name: "Group 1: Away Mode Color Temperature (K)"
       default: 3000
       selector:
         number:
@@ -242,8 +414,8 @@ blueprint:
           step: 100
           mode: box
     
-    day_color_temp:
-      name: Day Mode Color Temperature (K)
+    group_1_day_color_temp:
+      name: "Group 1: Day Mode Color Temperature (K)"
       default: 4000
       selector:
         number:
@@ -252,8 +424,8 @@ blueprint:
           step: 100
           mode: box
     
-    evening_color_temp:
-      name: Evening Mode Color Temperature (K)
+    group_1_evening_color_temp:
+      name: "Group 1: Evening Mode Color Temperature (K)"
       default: 3000
       selector:
         number:
@@ -262,8 +434,8 @@ blueprint:
           step: 100
           mode: box
     
-    night_color_temp:
-      name: Night Mode Color Temperature (K)
+    group_1_night_color_temp:
+      name: "Group 1: Night Mode Color Temperature (K)"
       default: 2200
       selector:
         number:
@@ -272,7 +444,91 @@ blueprint:
           step: 100
           mode: box
     
-    # Turn Off Settings
+    # Group 2 Color Temperature
+    group_2_away_color_temp:
+      name: "Group 2: Away Mode Color Temperature (K)"
+      default: 2700
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    group_2_day_color_temp:
+      name: "Group 2: Day Mode Color Temperature (K)"
+      default: 3000
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    group_2_evening_color_temp:
+      name: "Group 2: Evening Mode Color Temperature (K)"
+      default: 2700
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    group_2_night_color_temp:
+      name: "Group 2: Night Mode Color Temperature (K)"
+      default: 2200
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    # Group 3 Color Temperature
+    group_3_away_color_temp:
+      name: "Group 3: Away Mode Color Temperature (K)"
+      default: 2200
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    group_3_day_color_temp:
+      name: "Group 3: Day Mode Color Temperature (K)"
+      default: 2700
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    group_3_evening_color_temp:
+      name: "Group 3: Evening Mode Color Temperature (K)"
+      default: 2200
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    group_3_night_color_temp:
+      name: "Group 3: Night Mode Color Temperature (K)"
+      default: 2000
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    # ==========================================
+    # MEANS TO TURN OFF
+    # ==========================================
     motion_timeout_away:
       name: Motion Timeout - Away Mode (minutes)
       description: Minutes of no motion before turning off in Away mode
@@ -339,7 +595,35 @@ blueprint:
       selector:
         boolean: {}
     
-    # Activation Conditions
+    # Alternative Turn Off Devices
+    alternative_turn_off_devices:
+      name: Alternative Turn Off Devices (Area Filtered)
+      description: Devices to turn off during turn-off events (even if not controlled by this automation)
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+            - domain: media_player
+          area: !input area_selector
+    
+    alternative_turn_off_devices_all:
+      name: Alternative Turn Off Devices (All Areas)
+      description: Devices from any area to turn off during turn-off events
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+            - domain: media_player
+    
+    # ==========================================
+    # ACTIVATE LIGHTS OPTIONS (CONDITIONS)
+    # ==========================================
     disable_when_tv_on:
       name: Disable When TV is On
       description: Don't activate if TV or media player is on
@@ -396,7 +680,9 @@ blueprint:
             - input_boolean
             - switch
     
-    # Timing and Transitions
+    # ==========================================
+    # TIMING AND TRANSITIONS
+    # ==========================================
     activation_delay:
       name: Activation Delay (seconds)
       description: Delay before activating lights
@@ -419,7 +705,9 @@ blueprint:
           step: 0.1
           mode: box
     
-    # Advanced Options
+    # ==========================================
+    # ADVANCED OPTIONS
+    # ==========================================
     activate_even_if_partially_on:
       name: Activate Even if Partially On
       description: Activate even if some lights are already on
@@ -479,11 +767,31 @@ variables:
       "Room"
     {% endif %}
   
-  # Combine area-filtered and all-area device selections
-  effective_lights: >
-    {% set area_lights = lights_to_control.entity_id | default([]) %}
-    {% set all_lights = lights_to_control_all.entity_id | default([]) %}
+  # Combine light groups into effective lists
+  effective_group_1_lights: >
+    {% set area_lights = light_group_1_entities.entity_id | default([]) %}
+    {% set all_lights = light_group_1_entities_all.entity_id | default([]) %}
     {{ (area_lights + all_lights) | unique | list }}
+  
+  effective_group_2_lights: >
+    {% set area_lights = light_group_2_entities.entity_id | default([]) %}
+    {% set all_lights = light_group_2_entities_all.entity_id | default([]) %}
+    {{ (area_lights + all_lights) | unique | list }}
+  
+  effective_group_3_lights: >
+    {% set area_lights = light_group_3_entities.entity_id | default([]) %}
+    {% set all_lights = light_group_3_entities_all.entity_id | default([]) %}
+    {{ (area_lights + all_lights) | unique | list }}
+  
+  # Combined list of all lights for triggers and conditions
+  effective_lights: >
+    {{ (effective_group_1_lights + effective_group_2_lights + effective_group_3_lights) | unique | list }}
+  
+  # Alternative turn-off devices
+  effective_alternative_turn_off: >
+    {% set area_devices = alternative_turn_off_devices.entity_id | default([]) %}
+    {% set all_devices = alternative_turn_off_devices_all.entity_id | default([]) %}
+    {{ (area_devices + all_devices) | unique | list }}
   
   effective_motion_sensors: >
     {% set area_motion = motion_sensors.entity_id | default([]) %}
@@ -512,36 +820,96 @@ variables:
   # Get current mode from input_select.home_mode
   current_mode: "{{ states('input_select.home_mode') | lower }}"
   
-  # Calculate brightness based on mode
-  target_brightness: >
+  # Calculate per-group brightness based on mode
+  group_1_target_brightness: >
     {% if current_mode == 'away' %}
-      {{ away_brightness }}
+      {{ group_1_away_brightness }}
     {% elif current_mode == 'day' %}
-      {{ day_brightness }}
+      {{ group_1_day_brightness }}
     {% elif current_mode == 'evening' %}
-      {{ evening_brightness }}
+      {{ group_1_evening_brightness }}
     {% elif current_mode == 'night' %}
-      {{ night_brightness }}
+      {{ group_1_night_brightness }}
     {% else %}
-      {{ day_brightness }}
+      {{ group_1_day_brightness }}
     {% endif %}
   
-  # Calculate color temperature based on mode
-  target_color_temp: >
+  group_2_target_brightness: >
+    {% if current_mode == 'away' %}
+      {{ group_2_away_brightness }}
+    {% elif current_mode == 'day' %}
+      {{ group_2_day_brightness }}
+    {% elif current_mode == 'evening' %}
+      {{ group_2_evening_brightness }}
+    {% elif current_mode == 'night' %}
+      {{ group_2_night_brightness }}
+    {% else %}
+      {{ group_2_day_brightness }}
+    {% endif %}
+  
+  group_3_target_brightness: >
+    {% if current_mode == 'away' %}
+      {{ group_3_away_brightness }}
+    {% elif current_mode == 'day' %}
+      {{ group_3_day_brightness }}
+    {% elif current_mode == 'evening' %}
+      {{ group_3_evening_brightness }}
+    {% elif current_mode == 'night' %}
+      {{ group_3_night_brightness }}
+    {% else %}
+      {{ group_3_day_brightness }}
+    {% endif %}
+  
+  # Calculate per-group color temperature based on mode
+  group_1_target_color_temp: >
     {% if enable_color_temp %}
       {% if current_mode == 'away' %}
-        {{ away_color_temp }}
+        {{ group_1_away_color_temp }}
       {% elif current_mode == 'day' %}
-        {{ day_color_temp }}
+        {{ group_1_day_color_temp }}
       {% elif current_mode == 'evening' %}
-        {{ evening_color_temp }}
+        {{ group_1_evening_color_temp }}
       {% elif current_mode == 'night' %}
-        {{ night_color_temp }}
+        {{ group_1_night_color_temp }}
       {% else %}
-        {{ day_color_temp }}
+        {{ group_1_day_color_temp }}
       {% endif %}
     {% else %}
       4000
+    {% endif %}
+  
+  group_2_target_color_temp: >
+    {% if enable_color_temp %}
+      {% if current_mode == 'away' %}
+        {{ group_2_away_color_temp }}
+      {% elif current_mode == 'day' %}
+        {{ group_2_day_color_temp }}
+      {% elif current_mode == 'evening' %}
+        {{ group_2_evening_color_temp }}
+      {% elif current_mode == 'night' %}
+        {{ group_2_night_color_temp }}
+      {% else %}
+        {{ group_2_day_color_temp }}
+      {% endif %}
+    {% else %}
+      3000
+    {% endif %}
+  
+  group_3_target_color_temp: >
+    {% if enable_color_temp %}
+      {% if current_mode == 'away' %}
+        {{ group_3_away_color_temp }}
+      {% elif current_mode == 'day' %}
+        {{ group_3_day_color_temp }}
+      {% elif current_mode == 'evening' %}
+        {{ group_3_evening_color_temp }}
+      {% elif current_mode == 'night' %}
+        {{ group_3_night_color_temp }}
+      {% else %}
+        {{ group_3_day_color_temp }}
+      {% endif %}
+    {% else %}
+      2700
     {% endif %}
   
   # Calculate timeout based on mode and weekend
@@ -689,19 +1057,50 @@ action:
             then:
               - service: system_log.write
                 data:
-                  message: "{{ effective_room_name }}: Motion detected, activating lights (Mode: {{ current_mode }}, Brightness: {{ target_brightness }}%)"
+                  message: "{{ effective_room_name }}: Motion detected, activating lights (Mode: {{ current_mode }})"
                   level: info
           
           - delay:
               seconds: "{{ activation_delay }}"
           
-          - service: light.turn_on
-            target:
-              entity_id: "{{ effective_lights }}"
-            data:
-              brightness_pct: "{{ target_brightness }}"
-              color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
-              transition: "{{ fade_time }}"
+          # Activate Light Group 1
+          - if:
+              - condition: template
+                value_template: "{{ effective_group_1_lights | length > 0 and group_1_target_brightness > 0 }}"
+            then:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ effective_group_1_lights }}"
+                data:
+                  brightness_pct: "{{ group_1_target_brightness }}"
+                  color_temp_kelvin: "{{ group_1_target_color_temp if enable_color_temp else omit }}"
+                  transition: "{{ fade_time }}"
+          
+          # Activate Light Group 2
+          - if:
+              - condition: template
+                value_template: "{{ effective_group_2_lights | length > 0 and group_2_target_brightness > 0 }}"
+            then:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ effective_group_2_lights }}"
+                data:
+                  brightness_pct: "{{ group_2_target_brightness }}"
+                  color_temp_kelvin: "{{ group_2_target_color_temp if enable_color_temp else omit }}"
+                  transition: "{{ fade_time }}"
+          
+          # Activate Light Group 3
+          - if:
+              - condition: template
+                value_template: "{{ effective_group_3_lights | length > 0 and group_3_target_brightness > 0 }}"
+            then:
+              - service: light.turn_on
+                target:
+                  entity_id: "{{ effective_group_3_lights }}"
+                data:
+                  brightness_pct: "{{ group_3_target_brightness }}"
+                  color_temp_kelvin: "{{ group_3_target_color_temp if enable_color_temp else omit }}"
+                  transition: "{{ fade_time }}"
           
           - if:
               - condition: template
@@ -813,11 +1212,21 @@ action:
                   message: "{{ effective_room_name }}: Motion timeout ({{ motion_timeout }} min), turning off lights"
                   level: info
           
+          # Turn off main light groups
           - service: light.turn_off
             target:
               entity_id: "{{ effective_lights }}"
             data:
               transition: "{{ fade_time }}"
+          
+          # Turn off alternative devices
+          - if:
+              - condition: template
+                value_template: "{{ effective_alternative_turn_off | length > 0 }}"
+            then:
+              - service: homeassistant.turn_off
+                target:
+                  entity_id: "{{ effective_alternative_turn_off }}"
           
           - if:
               - condition: template
