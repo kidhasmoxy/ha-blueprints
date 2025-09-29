@@ -643,6 +643,50 @@ blueprint:
         boolean: {}
 
 variables:
+  room_name: !input room_name
+  area_selector: !input area_selector
+  light_group_1_entities: !input light_group_1_entities
+  light_group_2_entities: !input light_group_2_entities
+  light_group_3_entities: !input light_group_3_entities
+  motion_sensors: !input motion_sensors
+  contact_sensors: !input contact_sensors
+  button_devices: !input button_devices
+  alternative_turn_off_devices: !input alternative_turn_off_devices
+  group_1_away_brightness: !input group_1_away_brightness
+  group_1_day_brightness: !input group_1_day_brightness
+  group_1_evening_brightness: !input group_1_evening_brightness
+  group_1_night_brightness: !input group_1_night_brightness
+  group_2_away_brightness: !input group_2_away_brightness
+  group_2_day_brightness: !input group_2_day_brightness
+  group_2_evening_brightness: !input group_2_evening_brightness
+  group_2_night_brightness: !input group_2_night_brightness
+  group_3_away_brightness: !input group_3_away_brightness
+  group_3_day_brightness: !input group_3_day_brightness
+  group_3_evening_brightness: !input group_3_evening_brightness
+  group_3_night_brightness: !input group_3_night_brightness
+  enable_color_temp: !input enable_color_temp
+  group_1_away_color_temp: !input group_1_away_color_temp
+  group_1_day_color_temp: !input group_1_day_color_temp
+  group_1_evening_color_temp: !input group_1_evening_color_temp
+  group_1_night_color_temp: !input group_1_night_color_temp
+  group_2_away_color_temp: !input group_2_away_color_temp
+  group_2_day_color_temp: !input group_2_day_color_temp
+  group_2_evening_color_temp: !input group_2_evening_color_temp
+  group_2_night_color_temp: !input group_2_night_color_temp
+  group_3_away_color_temp: !input group_3_away_color_temp
+  group_3_day_color_temp: !input group_3_day_color_temp
+  group_3_evening_color_temp: !input group_3_evening_color_temp
+  group_3_night_color_temp: !input group_3_night_color_temp
+  motion_timeout_away: !input motion_timeout_away
+  motion_timeout_day: !input motion_timeout_day
+  motion_timeout_evening: !input motion_timeout_evening
+  motion_timeout_night: !input motion_timeout_night
+  enable_weekend_settings: !input enable_weekend_settings
+  weekend_timeout_multiplier: !input weekend_timeout_multiplier
+  enable_illuminance_control: !input enable_illuminance_control
+  illuminance_sensor: !input illuminance_sensor
+  illuminance_threshold: !input illuminance_threshold
+
   # Determine the effective room name (area name or override)
   effective_room_name: >
     {% if room_name and room_name | trim != "" %}
@@ -816,8 +860,8 @@ variables:
   
   # Check illuminance condition
   illuminance_ok: >
-    {% if activation_options_section.enable_illuminance_control and activation_triggers_section.illuminance_sensor %}
-      {{ states(activation_triggers_section.illuminance_sensor) | int(999) < activation_options_section.illuminance_threshold }}
+    {% if enable_illuminance_control and illuminance_sensor %}
+      {{ states(illuminance_sensor) | int(999) < illuminance_threshold }}
     {% else %}
       true
     {% endif %}
@@ -885,9 +929,26 @@ trigger:
     id: mode_change
   
   # Manual light changes (for override detection)
-  - platform: template
-    value_template: "{{ expand(light_group_1_entities + light_group_2_entities + light_group_3_entities | default([])) | selectattr('context.user_id', 'defined') | selectattr('context.user_id', 'eq', None) | list | length > 0 }}"
+  - platform: state
+    entity_id: !input light_group_1_entities
     id: manual_change
+    context:
+      user_id: null
+    enabled: "{{ light_group_1_entities | default([]) | length > 0 }}"
+
+  - platform: state
+    entity_id: !input light_group_2_entities
+    id: manual_change
+    context:
+      user_id: null
+    enabled: "{{ light_group_2_entities | default([]) | length > 0 }}"
+
+  - platform: state
+    entity_id: !input light_group_3_entities
+    id: manual_change
+    context:
+      user_id: null
+    enabled: "{{ light_group_3_entities | default([]) | length > 0 }}"
 
 condition:
   # Always allow the automation to run - conditions are handled in actions
