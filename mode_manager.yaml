@@ -1,7 +1,7 @@
 blueprint:
-  name: Mode Manager (Hubitat Style) v1.0.5
+  name: Mode Manager (Hubitat Style) v1.0.6
   description: |
-    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.5).
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.6).
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
@@ -70,14 +70,12 @@ blueprint:
             time: {}
     
         sunrise_offset:
-          name: "Day Mode - Sunrise Offset (minutes)"
-          description: "Minutes before (-) or after (+) sunrise"
-          default: 0
+          name: "Day Mode - Sunrise Offset"
+          description: "Time before (-) or after (+) sunrise"
+          default: { minutes: 0 }
           selector:
-            number:
-              min: -120
-              max: 120
-              step: 1
+            duration:
+              negative: true
     
         morning_schedule_type:
           name: "Day Mode - Schedule Type"
@@ -164,14 +162,12 @@ blueprint:
             time: {}
     
         sunset_offset:
-          name: "Evening Mode - Sunset Offset (minutes)"
-          description: "Minutes before (-) or after (+) sunset"
-          default: 0
+          name: "Evening Mode - Sunset Offset"
+          description: "Time before (-) or after (+) sunset"
+          default: { minutes: 0 }
           selector:
-            number:
-              min: -120
-              max: 120
-              step: 1
+            duration:
+              negative: true
     
         evening_schedule_type:
           name: "Evening Mode - Schedule Type"
@@ -258,14 +254,12 @@ blueprint:
             time: {}
     
         night_sunset_offset:
-          name: "Night Mode - Sunset Offset (minutes)"
-          description: "Minutes before (-) or after (+) sunset for Night mode"
-          default: 240
+          name: "Night Mode - Sunset Offset"
+          description: "Time before (-) or after (+) sunset for Night mode"
+          default: { minutes: 240 }
           selector:
-            number:
-              min: -120
-              max: 480
-              step: 1
+            duration:
+              negative: true
     
         night_schedule_type:
           name: "Night Mode - Schedule Type"
@@ -464,7 +458,7 @@ trigger:
   
   - platform: sun
     event: sunrise
-    offset: "{{ ('-' if (sunrise_offset | int) < 0 else '') ~ '%02d:%02d' | format((sunrise_offset | int) | abs // 60, (sunrise_offset | int) | abs % 60) }}"
+    offset: !input sunrise_offset
     id: "sunrise"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
@@ -476,7 +470,7 @@ trigger:
   
   - platform: sun
     event: sunset
-    offset: "{{ ('-' if (sunset_offset | int) < 0 else '') ~ '%02d:%02d' | format((sunset_offset | int) | abs // 60, (sunset_offset | int) | abs % 60) }}"
+    offset: !input sunset_offset
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
@@ -488,7 +482,7 @@ trigger:
   
   - platform: sun
     event: sunset
-    offset: "{{ ('-' if (night_sunset_offset | int) < 0 else '') ~ '%02d:%02d' | format((night_sunset_offset | int) | abs // 60, (night_sunset_offset | int) | abs % 60) }}"
+    offset: !input night_sunset_offset
     id: "night_sunset"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
