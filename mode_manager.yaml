@@ -234,12 +234,38 @@ blueprint:
           selector:
             text: {}
     
+        night_trigger_type:
+          name: "Night Mode Trigger"
+          description: "How to trigger Night mode"
+          default: "time"
+          selector:
+            select:
+              options:
+                - label: "Fixed Time"
+                  value: "time"
+                - label: "Sunset (with optional offset)"
+                  value: "sunset"
+                - label: "Earlier of Fixed Time or Sunset"
+                  value: "earlier"
+                - label: "Later of Fixed Time or Sunset"
+                  value: "later"
+    
         night_time:
           name: "Night Mode - Fixed Time"
           description: "Fixed time to switch to Night mode"
           default: "22:00:00"
           selector:
             time: {}
+    
+        night_sunset_offset:
+          name: "Night Mode - Sunset Offset (minutes)"
+          description: "Minutes before (-) or after (+) sunset for Night mode"
+          default: 240
+          selector:
+            number:
+              min: -120
+              max: 480
+              step: 1
     
         night_schedule_type:
           name: "Night Mode - Schedule Type"
@@ -523,6 +549,7 @@ variables:
   skip_mode_list: "{{ skip_modes.split(',') | map('trim') | list if skip_modes else [] }}"
   morning_trigger_type: !input morning_trigger_type
   evening_trigger_type: !input evening_trigger_type
+  night_trigger_type: !input night_trigger_type
   enable_time_modes: !input enable_time_modes
   enable_morning_mode: !input enable_morning_mode
   enable_evening_mode: !input enable_evening_mode
@@ -544,6 +571,8 @@ variables:
   night_schedule_type: !input night_schedule_type
   night_days: !input night_days
   night_schedule: !input night_schedule
+  night_time: !input night_time
+  night_sunset_offset: !input night_sunset_offset
   current_weekday: "{{ now().strftime('%A').lower() }}"
   guest_mode_sensor: !input guest_mode_sensor
   # Button events
@@ -585,11 +614,17 @@ trigger:
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
-  # Night Mode trigger (always fixed time)
+  # Night Mode triggers
   - platform: time
     at: !input night_time
     id: "night_time"
-    enabled: "{{ enable_time_modes and enable_night_mode }}"
+    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['time', 'earlier', 'later'] }}"
+  
+  - platform: sun
+    event: sunset
+    offset: !input night_sunset_offset
+    id: "night_sunset"
+    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
   # Presence triggers
   - platform: state
@@ -757,7 +792,9 @@ action:
       # Night Mode time-based changes
       - conditions:
           - condition: trigger
-            id: "night_time"
+            id: 
+              - "night_time"
+              - "night_sunset"
           - condition: template
             value_template: "{{ enable_night_mode }}"
           - condition: template
@@ -774,6 +811,35 @@ action:
               {% elif schedule_type == 'schedule_helper' %}
                 {% set schedule_entity = night_schedule %}
                 {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
+          - condition: template
+            value_template: >
+              {% set trigger_type = night_trigger_type %}
+              {% set trigger_id = trigger.id %}
+              {% if trigger_type == 'time' %}
+                {{ trigger_id == 'night_time' }}
+              {% elif trigger_type == 'sunset' %}
+                {{ trigger_id == 'night_sunset' }}
+              {% elif trigger_type == 'earlier' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(night_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=night_sunset_offset) %}
+                {% if trigger_id == 'night_time' %}
+                  {{ fixed_time <= sunset_time }}
+                {% elif trigger_id == 'night_sunset' %}
+                  {{ sunset_time <= fixed_time }}
+                {% endif %}
+              {% elif trigger_type == 'later' %}
+                {% set now_time = now() %}
+                {% set fixed_time = today_at(night_time) %}
+                {% set sunset_time = as_timestamp(state_attr('sun.sun', 'next_setting')) | timestamp_custom('%Y-%m-%d %H:%M:%S') | as_datetime + timedelta(minutes=night_sunset_offset) %}
+                {% if trigger_id == 'night_time' %}
+                  {{ fixed_time >= sunset_time }}
+                {% elif trigger_id == 'night_sunset' %}
+                  {{ sunset_time >= fixed_time }}
+                {% endif %}
               {% else %}
                 true
               {% endif %}
