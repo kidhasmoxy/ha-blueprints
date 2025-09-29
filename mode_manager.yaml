@@ -406,132 +406,6 @@ blueprint:
             - input_boolean
             - switch
     
-    button_section:
-      name: "🔘 Button-Based Mode Changes"
-      icon: mdi:gesture-tap-button
-      description: "Configure mode changes triggered by button events"
-      collapsed: true
-      input:
-        enable_button_modes:
-          name: Enable Button-Based Mode Changes
-          description: Enable mode changes triggered by button events
-          default: false
-          selector:
-            boolean: {}
-    
-        button_day_mode:
-          name: Day Mode Button Event
-          description: Button event to trigger Day mode (e.g., "button_1_single", "1002"). Leave empty to disable.
-          default: ""
-          selector:
-            text: {}
-    
-        button_evening_mode:
-          name: Evening Mode Button Event
-          description: Button event to trigger Evening mode (e.g., "button_2_single", "1004"). Leave empty to disable.
-          default: ""
-          selector:
-            text: {}
-    
-        button_night_mode:
-          name: Night Mode Button Event
-          description: Button event to trigger Night mode (e.g., "button_3_single", "1006"). Leave empty to disable.
-          default: ""
-          selector:
-            text: {}
-    
-        button_away_mode:
-          name: Away Mode Button Event
-          description: Button event to trigger Away mode (e.g., "button_4_single", "1008"). Leave empty to disable.
-          default: ""
-          selector:
-            text: {}
-    
-    switch_section:
-      name: "🔌 Switch-Based Mode Changes"
-      icon: mdi:toggle-switch
-      description: "Configure mode changes triggered by switch states"
-      collapsed: true
-      input:
-        enable_switch_modes:
-          name: Enable Switch-Based Mode Changes
-          description: Enable mode changes triggered by switch states
-          default: false
-          selector:
-            boolean: {}
-    
-        switch_devices:
-          name: Switch Devices
-          description: Select switch entities for mode control
-          default: {}
-          selector:
-            entity:
-              domain: 
-                - switch
-                - light
-                - input_boolean
-              multiple: true
-    
-        # Switch Mode Mappings
-        switch_mode_1:
-          name: Switch Mode 1
-          description: Enter mode name from your input_select for first switch trigger (leave empty to disable)
-          default: ""
-          selector:
-            text: {}
-    
-        switch_entity_1:
-          name: Switch Entity 1
-          description: Switch entity for Mode 1
-          default: ""
-          selector:
-            entity:
-              domain: 
-                - switch
-                - light
-                - input_boolean
-    
-        switch_state_1:
-          name: Switch State 1
-          description: Switch state that triggers Mode 1
-          default: "on"
-          selector:
-            select:
-              options:
-                - label: "On"
-                  value: "on"
-                - label: "Off"
-                  value: "off"
-    
-        switch_mode_2:
-          name: Switch Mode 2
-          description: Enter mode name from your input_select for second switch trigger (leave empty to disable)
-          default: ""
-          selector:
-            text: {}
-    
-        switch_entity_2:
-          name: Switch Entity 2
-          description: Switch entity for Mode 2
-          default: ""
-          selector:
-            entity:
-              domain: 
-                - switch
-                - light
-                - input_boolean
-    
-        switch_state_2:
-          name: Switch State 2
-          description: Switch state that triggers Mode 2
-          default: "off"
-          selector:
-            select:
-              options:
-                - label: "On"
-                  value: "on"
-                - label: "Off"
-                  value: "off"
 
 variables:
   mode_entity: !input mode_selector
@@ -546,7 +420,6 @@ variables:
   enable_evening_mode: !input enable_evening_mode
   enable_night_mode: !input enable_night_mode
   enable_presence_modes: !input enable_presence_modes
-  enable_switch_modes: !input enable_switch_modes
   morning_time: !input morning_time
   evening_time: !input evening_time
   sunrise_offset: !input sunrise_offset
@@ -572,18 +445,6 @@ variables:
   night_sunset_offset: !input night_sunset_offset
   current_weekday: "{{ now().strftime('%A').lower() }}"
   guest_mode_sensor: !input guest_mode_sensor
-  # Button events
-  button_day_event: !input button_day_mode
-  button_evening_event: !input button_evening_mode
-  button_night_event: !input button_night_mode
-  button_away_event: !input button_away_mode
-  # Switch variables
-  switch_mode_1: !input switch_mode_1
-  switch_entity_1: !input switch_entity_1
-  switch_state_1: !input switch_state_1
-  switch_mode_2: !input switch_mode_2
-  switch_entity_2: !input switch_entity_2
-  switch_state_2: !input switch_state_2
 
 trigger:
   # Day Mode triggers
@@ -635,27 +496,6 @@ trigger:
     id: "presence_home"
     enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
   
-  # Button triggers
-  - platform: event
-    event_type: 
-      - zha_event
-      - deconz_event
-      - hue_event
-    id: "button_event"
-    enabled: !input enable_button_modes
-  
-  # Switch triggers
-  - platform: state
-    entity_id: !input switch_entity_1
-    to: !input switch_state_1
-    id: "switch_1"
-    enabled: "{{ enable_switch_modes and switch_entity_1 != '' and switch_mode_1 != '' }}"
-  
-  - platform: state
-    entity_id: !input switch_entity_2
-    to: !input switch_state_2
-    id: "switch_2"
-    enabled: "{{ enable_switch_modes and switch_entity_2 != '' and switch_mode_2 != '' }}"
   
   # Startup trigger
   - platform: homeassistant
@@ -928,61 +768,6 @@ action:
                 data:
                   option: !input return_mode
       
-      # Button-based mode changes
-      - conditions:
-          - condition: trigger
-            id: "button_event"
-          - condition: template
-            value_template: >
-              {% set event_data = trigger.event.data %}
-              {% set command = event_data.command %}
-              {% set day_event = button_day_event %}
-              {% set evening_event = button_evening_event %}
-              {% set night_event = button_night_event %}
-              {% set away_event = button_away_event %}
-              {{ command == day_event or command == evening_event or command == night_event or command == away_event }}
-        sequence:
-          - service: input_select.select_option
-            target:
-              entity_id: !input mode_selector
-            data:
-              option: >
-                {% set event_data = trigger.event.data %}
-                {% set command = event_data.command %}
-                {% set day_event = button_day_event %}
-                {% set evening_event = button_evening_event %}
-                {% set night_event = button_night_event %}
-                {% set away_event = button_away_event %}
-                {% if command == day_event and day_event != '' %}
-                  {{ morning_mode }}
-                {% elif command == evening_event and evening_event != '' %}
-                  {{ evening_mode }}
-                {% elif command == night_event and night_event != '' %}
-                  {{ night_mode }}
-                {% elif command == away_event and away_event != '' %}
-                  {{ away_mode }}
-                {% endif %}
-      
-      # Switch-based mode changes
-      - conditions:
-          - condition: trigger
-            id: "switch_1"
-        sequence:
-          - service: input_select.select_option
-            target:
-              entity_id: !input mode_selector
-            data:
-              option: !input switch_mode_1
-      
-      - conditions:
-          - condition: trigger
-            id: "switch_2"
-        sequence:
-          - service: input_select.select_option
-            target:
-              entity_id: !input mode_selector
-            data:
-              option: !input switch_mode_2
       
       # Startup mode setting
       - conditions:
