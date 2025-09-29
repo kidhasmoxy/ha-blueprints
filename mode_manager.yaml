@@ -464,12 +464,10 @@ trigger:
   
   - platform: sun
     event: sunrise
-    {% if sunrise_offset | int != 0 %}
     offset: >-
       {% set minutes = sunrise_offset | int %}
       {% set abs_minutes = minutes | abs %}
       {{ '-' if minutes < 0 else '' }}{{ '%02d:%02d' | format(abs_minutes // 60, abs_minutes % 60) }}
-    {% endif %}
     id: "sunrise"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
@@ -481,12 +479,10 @@ trigger:
   
   - platform: sun
     event: sunset
-    {% if sunset_offset | int != 0 %}
     offset: >-
       {% set minutes = sunset_offset | int %}
       {% set abs_minutes = minutes | abs %}
       {{ '-' if minutes < 0 else '' }}{{ '%02d:%02d' | format(abs_minutes // 60, abs_minutes % 60) }}
-    {% endif %}
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
@@ -498,12 +494,10 @@ trigger:
   
   - platform: sun
     event: sunset
-    {% if night_sunset_offset | int != 0 %}
     offset: >-
       {% set minutes = night_sunset_offset | int %}
       {% set abs_minutes = minutes | abs %}
       {{ '-' if minutes < 0 else '' }}{{ '%02d:%02d' | format(abs_minutes // 60, abs_minutes % 60) }}
-    {% endif %}
     id: "night_sunset"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
