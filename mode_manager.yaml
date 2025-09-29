@@ -5,7 +5,8 @@ blueprint:
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
-  min_version: 2024.6.0
+  homeassistant:
+    min_version: 2024.6.0
   input:
     # ==========================================
     # BASIC CONFIGURATION
