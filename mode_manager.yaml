@@ -1,7 +1,7 @@
 blueprint:
-  name: Mode Manager (Hubitat Style) v1.1.0
+  name: Mode Manager (Hubitat Style) v1.2.0
   description: |
-    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.1.0).
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.2.0).
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
@@ -513,6 +513,27 @@ condition: []
 
 action:
   - choose:
+      # Manual execution trigger (for testing)
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger is not defined or trigger.id is not defined }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: >
+                {% set nowdt = now() %}
+                {% set m = today_at(morning_time) %}
+                {% set e = today_at(evening_time) %}
+                {% set n = today_at(night_time) %}
+                {% if nowdt >= n or nowdt < m %}
+                  {{ night_mode }}
+                {% elif nowdt >= e %}
+                  {{ evening_mode }}
+                {% else %}
+                  {{ morning_mode }}
+                {% endif %}
       # Day Mode time-based changes
       - conditions:
           - condition: trigger
