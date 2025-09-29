@@ -1,0 +1,753 @@
+blueprint:
+  name: Advanced Room Lighting (Hubitat Style)
+  description: |
+    Comprehensive room lighting automation that replicates Hubitat Room Lighting functionality.
+    Features motion detection, contact sensors, buttons, illuminance control, per-mode settings,
+    advanced conditions, fade times, delays, and sophisticated turn-off logic.
+  domain: automation
+  input:
+    # Basic Configuration
+    area_selector:
+      name: Area (Optional)
+      description: Select an area to automatically populate room name and suggest devices
+      default: {}
+      selector:
+        area: {}
+    
+    room_name:
+      name: Room Name (Override)
+      description: Override the area name or provide a custom room name
+      default: ""
+      selector:
+        text: {}
+    
+    # Device Selection
+    lights_to_control:
+      name: Lights to Control
+      description: Select all lights, switches, and dimmers to control (filtered by area if selected)
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+    
+    # Activation Triggers
+    motion_sensors:
+      name: Motion Sensors
+      description: Motion sensors that activate lights (filtered by area if selected)
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: binary_sensor
+            device_class: motion
+    
+    contact_sensors:
+      name: Contact Sensors (Doors/Windows)
+      description: Contact sensors that activate lights when opened (filtered by area if selected)
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: binary_sensor
+            device_class: 
+              - door
+              - window
+              - garage_door
+    
+    button_devices:
+      name: Button Devices
+      description: Buttons, switches, or remotes that activate lights
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: sensor
+            - domain: binary_sensor
+            - domain: device_tracker
+    
+    illuminance_sensor:
+      name: Illuminance Sensor (Optional)
+      description: Light sensor to prevent activation during bright conditions
+      default: {}
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+    
+    # Activation Settings
+    enable_motion_activation:
+      name: Enable Motion Activation
+      description: Activate lights when motion is detected
+      default: true
+      selector:
+        boolean: {}
+    
+    enable_contact_activation:
+      name: Enable Contact Activation
+      description: Activate lights when doors/windows open
+      default: false
+      selector:
+        boolean: {}
+    
+    enable_button_activation:
+      name: Enable Button Activation
+      description: Activate lights when buttons are pressed
+      default: false
+      selector:
+        boolean: {}
+    
+    # Illuminance Control
+    enable_illuminance_control:
+      name: Enable Illuminance Control
+      description: Only activate if illuminance is below threshold
+      default: false
+      selector:
+        boolean: {}
+    
+    illuminance_threshold:
+      name: Illuminance Threshold (lux)
+      description: Don't activate if illuminance is above this value
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 1
+          mode: box
+    
+    # Per-Mode Light Settings
+    away_brightness:
+      name: Away Mode Brightness (%)
+      description: Brightness level when in Away mode
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: box
+    
+    day_brightness:
+      name: Day Mode Brightness (%)
+      description: Brightness level when in Day mode
+      default: 75
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: box
+    
+    evening_brightness:
+      name: Evening Mode Brightness (%)
+      description: Brightness level when in Evening mode
+      default: 85
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: box
+    
+    night_brightness:
+      name: Night Mode Brightness (%)
+      description: Brightness level when in Night mode
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: box
+    
+    # Color Temperature Settings
+    enable_color_temp:
+      name: Enable Color Temperature Control
+      description: Adjust color temperature based on mode
+      default: false
+      selector:
+        boolean: {}
+    
+    away_color_temp:
+      name: Away Mode Color Temperature (K)
+      default: 3000
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    day_color_temp:
+      name: Day Mode Color Temperature (K)
+      default: 4000
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    evening_color_temp:
+      name: Evening Mode Color Temperature (K)
+      default: 3000
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    night_color_temp:
+      name: Night Mode Color Temperature (K)
+      default: 2200
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          mode: box
+    
+    # Turn Off Settings
+    motion_timeout_away:
+      name: Motion Timeout - Away Mode (minutes)
+      description: Minutes of no motion before turning off in Away mode
+      default: 2
+      selector:
+        number:
+          min: 0.5
+          max: 1440
+          step: 0.5
+          mode: box
+    
+    motion_timeout_day:
+      name: Motion Timeout - Day Mode (minutes)
+      description: Minutes of no motion before turning off in Day mode
+      default: 10
+      selector:
+        number:
+          min: 0.5
+          max: 1440
+          step: 0.5
+          mode: box
+    
+    motion_timeout_evening:
+      name: Motion Timeout - Evening Mode (minutes)
+      description: Minutes of no motion before turning off in Evening mode
+      default: 15
+      selector:
+        number:
+          min: 0.5
+          max: 1440
+          step: 0.5
+          mode: box
+    
+    motion_timeout_night:
+      name: Motion Timeout - Night Mode (minutes)
+      description: Minutes of no motion before turning off in Night mode
+      default: 5
+      selector:
+        number:
+          min: 0.5
+          max: 1440
+          step: 0.5
+          mode: box
+    
+    # Advanced Turn Off Options
+    require_all_motion_clear:
+      name: Require All Motion Sensors Clear
+      description: All motion sensors must be clear before turning off
+      default: true
+      selector:
+        boolean: {}
+    
+    require_contact_closed:
+      name: Require Contact Sensors Closed
+      description: Contact sensors must be closed before turning off
+      default: false
+      selector:
+        boolean: {}
+    
+    prevent_motion_override:
+      name: Prevent Motion Override
+      description: Prevent motion from turning off lights after manual changes
+      default: true
+      selector:
+        boolean: {}
+    
+    # Activation Conditions
+    disable_when_tv_on:
+      name: Disable When TV is On
+      description: Don't activate if TV or media player is on
+      default: false
+      selector:
+        boolean: {}
+    
+    tv_media_player:
+      name: TV/Media Player Entity
+      description: Media player to check if TV is on
+      default: {}
+      selector:
+        entity:
+          domain: media_player
+    
+    disable_when_sleeping:
+      name: Disable When Someone is Sleeping
+      description: Don't activate if sleep mode is active
+      default: false
+      selector:
+        boolean: {}
+    
+    sleep_sensor:
+      name: Sleep Sensor/Switch
+      description: Entity that indicates if someone is sleeping
+      default: {}
+      selector:
+        entity:
+          domain: 
+            - binary_sensor
+            - input_boolean
+            - switch
+    
+    # Timing and Transitions
+    activation_delay:
+      name: Activation Delay (seconds)
+      description: Delay before activating lights
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 0.1
+          mode: box
+    
+    fade_time:
+      name: Fade Time (seconds)
+      description: Transition time for light changes
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 0.1
+          mode: box
+    
+    # Advanced Options
+    activate_even_if_partially_on:
+      name: Activate Even if Partially On
+      description: Activate even if some lights are already on
+      default: false
+      selector:
+        boolean: {}
+    
+    turn_off_even_if_partially_off:
+      name: Turn Off Even if Partially Off
+      description: Turn off even if some lights are already off
+      default: true
+      selector:
+        boolean: {}
+    
+    enable_occupancy_tracking:
+      name: Enable Occupancy Tracking
+      description: Track room occupancy state internally
+      default: true
+      selector:
+        boolean: {}
+    
+    # Weekend/Weekday Differences
+    enable_weekend_settings:
+      name: Enable Weekend Settings
+      description: Use different timeouts on weekends
+      default: false
+      selector:
+        boolean: {}
+    
+    weekend_timeout_multiplier:
+      name: Weekend Timeout Multiplier
+      description: Multiply timeouts by this factor on weekends
+      default: 1.5
+      selector:
+        number:
+          min: 0.1
+          max: 5.0
+          step: 0.1
+          mode: box
+    
+    # Debug and Testing
+    enable_debug_logging:
+      name: Enable Debug Logging
+      description: Log detailed debug information
+      default: false
+      selector:
+        boolean: {}
+
+variables:
+  # Determine the effective room name (area name or override)
+  effective_room_name: >
+    {% if room_name and room_name | trim != "" %}
+      {{ room_name }}
+    {% elif area_selector %}
+      {{ area_name(area_selector) }}
+    {% else %}
+      "Room"
+    {% endif %}
+  
+  # Get current mode from input_select.home_mode
+  current_mode: "{{ states('input_select.home_mode') | lower }}"
+  
+  # Calculate brightness based on mode
+  target_brightness: >
+    {% if current_mode == 'away' %}
+      {{ away_brightness }}
+    {% elif current_mode == 'day' %}
+      {{ day_brightness }}
+    {% elif current_mode == 'evening' %}
+      {{ evening_brightness }}
+    {% elif current_mode == 'night' %}
+      {{ night_brightness }}
+    {% else %}
+      {{ day_brightness }}
+    {% endif %}
+  
+  # Calculate color temperature based on mode
+  target_color_temp: >
+    {% if enable_color_temp %}
+      {% if current_mode == 'away' %}
+        {{ away_color_temp }}
+      {% elif current_mode == 'day' %}
+        {{ day_color_temp }}
+      {% elif current_mode == 'evening' %}
+        {{ evening_color_temp }}
+      {% elif current_mode == 'night' %}
+        {{ night_color_temp }}
+      {% else %}
+        {{ day_color_temp }}
+      {% endif %}
+    {% else %}
+      4000
+    {% endif %}
+  
+  # Calculate timeout based on mode and weekend
+  motion_timeout: >
+    {% set base_timeout = {
+      'away': motion_timeout_away,
+      'day': motion_timeout_day,
+      'evening': motion_timeout_evening,
+      'night': motion_timeout_night
+    }[current_mode] | default(motion_timeout_day) %}
+    {% if enable_weekend_settings and now().weekday() >= 5 %}
+      {{ (base_timeout * weekend_timeout_multiplier) | round(1) }}
+    {% else %}
+      {{ base_timeout }}
+    {% endif %}
+  
+  # Check if any motion sensors are active
+  any_motion_active: >
+    {{ expand(motion_sensors.entity_id) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+  
+  # Check if all motion sensors are clear
+  all_motion_clear: >
+    {{ expand(motion_sensors.entity_id) | selectattr('state', 'eq', 'off') | list | count == (expand(motion_sensors.entity_id) | list | count) }}
+  
+  # Check if any contact sensors are open
+  any_contact_open: >
+    {{ expand(contact_sensors.entity_id) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+  
+  # Check if all contact sensors are closed
+  all_contacts_closed: >
+    {{ expand(contact_sensors.entity_id) | selectattr('state', 'eq', 'off') | list | count == (expand(contact_sensors.entity_id) | list | count) }}
+  
+  # Check if any lights are currently on
+  any_lights_on: >
+    {{ expand(lights_to_control.entity_id) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+  
+  # Check if all lights are currently off
+  all_lights_off: >
+    {{ expand(lights_to_control.entity_id) | selectattr('state', 'eq', 'off') | list | count == (expand(lights_to_control.entity_id) | list | count) }}
+  
+  # Check illuminance condition
+  illuminance_ok: >
+    {% if enable_illuminance_control and illuminance_sensor.entity_id %}
+      {{ states(illuminance_sensor.entity_id) | int(999) < illuminance_threshold }}
+    {% else %}
+      true
+    {% endif %}
+  
+  # Check TV condition
+  tv_condition_ok: >
+    {% if disable_when_tv_on and tv_media_player.entity_id %}
+      {{ not is_state(tv_media_player.entity_id, 'playing') }}
+    {% else %}
+      true
+    {% endif %}
+  
+  # Check sleep condition
+  sleep_condition_ok: >
+    {% if disable_when_sleeping and sleep_sensor.entity_id %}
+      {{ is_state(sleep_sensor.entity_id, 'off') }}
+    {% else %}
+      true
+    {% endif %}
+
+trigger:
+  # Motion sensor activation
+  - platform: state
+    entity_id: !input motion_sensors
+    to: "on"
+    id: motion_on
+  
+  # Motion sensor deactivation with timeout
+  - platform: state
+    entity_id: !input motion_sensors
+    to: "off"
+    for:
+      minutes: "{{ motion_timeout }}"
+    id: motion_timeout
+  
+  # Contact sensor activation
+  - platform: state
+    entity_id: !input contact_sensors
+    to: "on"
+    id: contact_open
+  
+  # Contact sensor deactivation
+  - platform: state
+    entity_id: !input contact_sensors
+    to: "off"
+    id: contact_closed
+  
+  # Button press events
+  - platform: event
+    event_type: 
+      - zha_event
+      - deconz_event
+      - hue_event
+      - xiaomi_aqara.click
+    id: button_press
+  
+  # State changes for button devices
+  - platform: state
+    entity_id: !input button_devices
+    id: button_state_change
+  
+  # Mode changes
+  - platform: state
+    entity_id: input_select.home_mode
+    id: mode_change
+  
+  # Manual light changes (for override detection)
+  - platform: state
+    entity_id: !input lights_to_control
+    id: manual_change
+    context:
+      user_id: null
+
+condition:
+  # Always allow the automation to run - conditions are handled in actions
+
+action:
+  - choose:
+      # Motion activation
+      - conditions:
+          - condition: trigger
+            id: motion_on
+          - condition: template
+            value_template: "{{ enable_motion_activation }}"
+          - condition: template
+            value_template: "{{ illuminance_ok }}"
+          - condition: template
+            value_template: "{{ tv_condition_ok }}"
+          - condition: template
+            value_template: "{{ sleep_condition_ok }}"
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ activate_even_if_partially_on }}"
+              - condition: template
+                value_template: "{{ all_lights_off }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - service: system_log.write
+                data:
+                  message: "{{ effective_room_name }}: Motion detected, activating lights (Mode: {{ current_mode }}, Brightness: {{ target_brightness }}%)"
+                  level: info
+          
+          - delay:
+              seconds: "{{ activation_delay }}"
+          
+          - service: light.turn_on
+            target: !input lights_to_control
+            data:
+              brightness_pct: "{{ target_brightness }}"
+              color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
+              transition: "{{ fade_time }}"
+          
+          - if:
+              - condition: template
+                value_template: "{{ enable_occupancy_tracking }}"
+            then:
+              - event: room_lighting_activated
+                event_data:
+                  room: "{{ effective_room_name }}"
+                  trigger: motion
+                  mode: "{{ current_mode }}"
+                  brightness: "{{ target_brightness }}"
+      
+      # Contact sensor activation
+      - conditions:
+          - condition: trigger
+            id: contact_open
+          - condition: template
+            value_template: "{{ enable_contact_activation }}"
+          - condition: template
+            value_template: "{{ illuminance_ok }}"
+          - condition: template
+            value_template: "{{ tv_condition_ok }}"
+          - condition: template
+            value_template: "{{ sleep_condition_ok }}"
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ activate_even_if_partially_on }}"
+              - condition: template
+                value_template: "{{ all_lights_off }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - service: system_log.write
+                data:
+                  message: "{{ effective_room_name }}: Contact opened, activating lights"
+                  level: info
+          
+          - delay:
+              seconds: "{{ activation_delay }}"
+          
+          - service: light.turn_on
+            target: !input lights_to_control
+            data:
+              brightness_pct: "{{ target_brightness }}"
+              color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
+              transition: "{{ fade_time }}"
+      
+      # Button activation
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: button_press
+              - condition: trigger
+                id: button_state_change
+          - condition: template
+            value_template: "{{ enable_button_activation }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - service: system_log.write
+                data:
+                  message: "{{ effective_room_name }}: Button pressed, toggling lights"
+                  level: info
+          
+          - service: light.toggle
+            target: !input lights_to_control
+            data:
+              brightness_pct: "{{ target_brightness }}"
+              color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
+              transition: "{{ fade_time }}"
+      
+      # Motion timeout (turn off)
+      - conditions:
+          - condition: trigger
+            id: motion_timeout
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ not require_all_motion_clear }}"
+              - condition: template
+                value_template: "{{ all_motion_clear }}"
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ not require_contact_closed }}"
+              - condition: template
+                value_template: "{{ all_contacts_closed }}"
+          - condition: or
+            conditions:
+              - condition: template
+                value_template: "{{ turn_off_even_if_partially_off }}"
+              - condition: template
+                value_template: "{{ any_lights_on }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - service: system_log.write
+                data:
+                  message: "{{ effective_room_name }}: Motion timeout ({{ motion_timeout }} min), turning off lights"
+                  level: info
+          
+          - service: light.turn_off
+            target: !input lights_to_control
+            data:
+              transition: "{{ fade_time }}"
+          
+          - if:
+              - condition: template
+                value_template: "{{ enable_occupancy_tracking }}"
+            then:
+              - event: room_lighting_deactivated
+                event_data:
+                  room: "{{ effective_room_name }}"
+                  trigger: motion_timeout
+                  timeout_minutes: "{{ motion_timeout }}"
+      
+      # Mode change adjustment
+      - conditions:
+          - condition: trigger
+            id: mode_change
+          - condition: template
+            value_template: "{{ any_lights_on }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - service: system_log.write
+                data:
+                  message: "{{ effective_room_name }}: Mode changed to {{ current_mode }}, adjusting lights"
+                  level: info
+          
+          - service: light.turn_on
+            target: !input lights_to_control
+            data:
+              brightness_pct: "{{ target_brightness }}"
+              color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
+              transition: "{{ fade_time }}"
+      
+      # Manual override detection
+      - conditions:
+          - condition: trigger
+            id: manual_change
+          - condition: template
+            value_template: "{{ prevent_motion_override }}"
+          - condition: template
+            value_template: "{{ enable_debug_logging }}"
+        sequence:
+          - service: system_log.write
+            data:
+              message: "{{ effective_room_name }}: Manual light change detected, motion override may be prevented"
+              level: info
+
+mode: queued
+max: 10
+max_exceeded: silent
