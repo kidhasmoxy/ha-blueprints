@@ -28,8 +28,8 @@ blueprint:
     
     # Morning/Day Mode Settings
     morning_mode:
-      name: "Day Mode Name"
-      description: "Mode to set during daytime (triggered by morning time or sunrise)"
+      name: "Day Mode"
+      description: "Enter the mode name from your input_select to set during daytime (e.g., 'Day', 'Morning')"
       default: "Day"
       selector:
         text: {}
@@ -65,8 +65,8 @@ blueprint:
     
     # Evening Mode Settings
     evening_mode:
-      name: "Evening Mode Name"
-      description: "Mode to set during evening (triggered by evening time or sunset)"
+      name: "Evening Mode"
+      description: "Enter the mode name from your input_select to set during evening (e.g., 'Evening', 'Dusk')"
       default: "Evening"
       selector:
         text: {}
@@ -102,8 +102,8 @@ blueprint:
     
     # Night Mode Settings
     night_mode:
-      name: "Night Mode Name"
-      description: "Mode to set at night (always uses fixed time)"
+      name: "Night Mode"
+      description: "Enter the mode name from your input_select to set at night (e.g., 'Night', 'Sleep')"
       default: "Night"
       selector:
         text: {}
@@ -117,7 +117,7 @@ blueprint:
     
     skip_time_modes:
       name: Skip Time Changes for These Modes
-      description: Modes that should not be changed by time-based triggers (e.g., Away)
+      description: Comma-separated list of modes that should not be changed by time-based triggers (e.g., "Away,Vacation,Party")
       default: "Away"
       selector:
         text: {}
@@ -162,8 +162,8 @@ blueprint:
               value: "any_away"
     
     away_mode:
-      name: Away Mode Name
-      description: Mode to set when away condition is met
+      name: Away Mode
+      description: Enter the mode name from your input_select to set when away condition is met (e.g., 'Away', 'Vacation')
       default: "Away"
       selector:
         text: {}
@@ -194,7 +194,7 @@ blueprint:
     
     return_mode:
       name: Return Mode
-      description: Specific mode to set when returning (if not using time-based)
+      description: Enter the mode name from your input_select to set when returning (if not using time-based, e.g., 'Day')
       default: "Day"
       selector:
         text: {}
@@ -220,30 +220,59 @@ blueprint:
             - sensor
           multiple: true
     
-    button_day_event:
-      name: Day Mode Button Event
-      description: Button event to trigger Day mode (e.g., "button_1_single")
+    # Button Mode Mappings
+    button_mode_1:
+      name: Button Mode 1
+      description: Enter mode name from your input_select for first button event (leave empty to disable)
       default: ""
       selector:
         text: {}
     
-    button_evening_event:
-      name: Evening Mode Button Event
-      description: Button event to trigger Evening mode
+    button_event_1:
+      name: Button Event 1
+      description: Button event to trigger Mode 1 (e.g., "button_1_single")
       default: ""
       selector:
         text: {}
     
-    button_night_event:
-      name: Night Mode Button Event
-      description: Button event to trigger Night mode
+    button_mode_2:
+      name: Button Mode 2
+      description: Enter mode name from your input_select for second button event (leave empty to disable)
       default: ""
       selector:
         text: {}
     
-    button_away_event:
-      name: Away Mode Button Event
-      description: Button event to trigger Away mode
+    button_event_2:
+      name: Button Event 2
+      description: Button event to trigger Mode 2 (e.g., "button_2_single")
+      default: ""
+      selector:
+        text: {}
+    
+    button_mode_3:
+      name: Button Mode 3
+      description: Enter mode name from your input_select for third button event (leave empty to disable)
+      default: ""
+      selector:
+        text: {}
+    
+    button_event_3:
+      name: Button Event 3
+      description: Button event to trigger Mode 3 (e.g., "button_3_single")
+      default: ""
+      selector:
+        text: {}
+    
+    button_mode_4:
+      name: Button Mode 4
+      description: Enter mode name from your input_select for fourth button event (leave empty to disable)
+      default: ""
+      selector:
+        text: {}
+    
+    button_event_4:
+      name: Button Event 4
+      description: Button event to trigger Mode 4 (e.g., "button_4_single")
       default: ""
       selector:
         text: {}
@@ -270,9 +299,17 @@ blueprint:
             - input_boolean
           multiple: true
     
-    switch_day_on:
-      name: Day Mode Switch (On)
-      description: Switch that triggers Day mode when turned on
+    # Switch Mode Mappings
+    switch_mode_1:
+      name: Switch Mode 1
+      description: Enter mode name from your input_select for first switch trigger (leave empty to disable)
+      default: ""
+      selector:
+        text: {}
+    
+    switch_entity_1:
+      name: Switch Entity 1
+      description: Switch entity for Mode 1
       default: ""
       selector:
         entity:
@@ -281,9 +318,28 @@ blueprint:
             - light
             - input_boolean
     
-    switch_night_off:
-      name: Night Mode Switch (Off)
-      description: Switch that triggers Night mode when turned off
+    switch_state_1:
+      name: Switch State 1
+      description: Switch state that triggers Mode 1
+      default: "on"
+      selector:
+        select:
+          options:
+            - label: "On"
+              value: "on"
+            - label: "Off"
+              value: "off"
+    
+    switch_mode_2:
+      name: Switch Mode 2
+      description: Enter mode name from your input_select for second switch trigger (leave empty to disable)
+      default: ""
+      selector:
+        text: {}
+    
+    switch_entity_2:
+      name: Switch Entity 2
+      description: Switch entity for Mode 2
       default: ""
       selector:
         entity:
@@ -291,12 +347,24 @@ blueprint:
             - switch
             - light
             - input_boolean
+    
+    switch_state_2:
+      name: Switch State 2
+      description: Switch state that triggers Mode 2
+      default: "off"
+      selector:
+        select:
+          options:
+            - label: "On"
+              value: "on"
+            - label: "Off"
+              value: "off"
 
 variables:
   mode_entity: !input mode_selector
   skip_modes: !input skip_time_modes
   current_mode: "{{ states(mode_entity) }}"
-  skip_mode_list: "{{ skip_modes.split(',') | map('trim') | list }}"
+  skip_mode_list: "{{ skip_modes.split(',') | map('trim') | list if skip_modes else [] }}"
   morning_trigger_type: !input morning_trigger_type
   evening_trigger_type: !input evening_trigger_type
   enable_time_modes: !input enable_time_modes
@@ -304,6 +372,28 @@ variables:
   away_trigger_logic: !input away_trigger_logic
   return_trigger_logic: !input return_trigger_logic
   away_mode: !input away_mode
+  morning_mode: !input morning_mode
+  evening_mode: !input evening_mode
+  night_mode: !input night_mode
+  return_mode: !input return_mode
+  # Button mappings
+  button_mappings:
+    - mode: !input button_mode_1
+      event: !input button_event_1
+    - mode: !input button_mode_2
+      event: !input button_event_2
+    - mode: !input button_mode_3
+      event: !input button_event_3
+    - mode: !input button_mode_4
+      event: !input button_event_4
+  # Switch mappings
+  switch_mappings:
+    - mode: !input switch_mode_1
+      entity: !input switch_entity_1
+      state: !input switch_state_1
+    - mode: !input switch_mode_2
+      entity: !input switch_entity_2
+      state: !input switch_state_2
 
 trigger:
   # Day Mode triggers
@@ -362,16 +452,16 @@ trigger:
   
   # Switch triggers
   - platform: state
-    entity_id: !input switch_day_on
-    to: "on"
-    id: "switch_day_on"
-    enabled: !input enable_switch_modes
+    entity_id: !input switch_entity_1
+    to: !input switch_state_1
+    id: "switch_1"
+    enabled: "{{ enable_switch_modes and switch_entity_1 != '' and switch_mode_1 != '' }}"
   
   - platform: state
-    entity_id: !input switch_night_off
-    to: "off"
-    id: "switch_night_off"
-    enabled: !input enable_switch_modes
+    entity_id: !input switch_entity_2
+    to: !input switch_state_2
+    id: "switch_2"
+    enabled: "{{ enable_switch_modes and switch_entity_2 != '' and switch_mode_2 != '' }}"
   
   # Startup trigger
   - platform: homeassistant
@@ -503,11 +593,10 @@ action:
           - condition: template
             value_template: >
               {% set event_data = trigger.event.data %}
-              {% set button_day = button_day_event %}
-              {% set button_evening = button_evening_event %}
-              {% set button_night = button_night_event %}
-              {% set button_away = button_away_event %}
-              {{ event_data.command in [button_day, button_evening, button_night, button_away] }}
+              {% set command = event_data.command %}
+              {% set mappings = button_mappings %}
+              {% set valid_events = mappings | selectattr('event', 'ne', '') | map(attribute='event') | list %}
+              {{ command in valid_events }}
         sequence:
           - service: input_select.select_option
             target:
@@ -515,40 +604,35 @@ action:
             data:
               option: >
                 {% set event_data = trigger.event.data %}
-                {% set button_day = button_day_event %}
-                {% set button_evening = button_evening_event %}
-                {% set button_night = button_night_event %}
-                {% set button_away = button_away_event %}
-                {% if event_data.command == button_day %}
-                  {{ morning_mode }}
-                {% elif event_data.command == button_evening %}
-                  {{ evening_mode }}
-                {% elif event_data.command == button_night %}
-                  {{ night_mode }}
-                {% elif event_data.command == button_away %}
-                  {{ away_mode }}
-                {% endif %}
+                {% set command = event_data.command %}
+                {% set mappings = button_mappings %}
+                {% for mapping in mappings %}
+                  {% if mapping.event == command and mapping.mode != '' %}
+                    {{ mapping.mode }}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
       
       # Switch-based mode changes
       - conditions:
           - condition: trigger
-            id: "switch_day_on"
+            id: "switch_1"
         sequence:
           - service: input_select.select_option
             target:
               entity_id: !input mode_selector
             data:
-              option: !input morning_mode
+              option: !input switch_mode_1
       
       - conditions:
           - condition: trigger
-            id: "switch_night_off"
+            id: "switch_2"
         sequence:
           - service: input_select.select_option
             target:
               entity_id: !input mode_selector
             data:
-              option: !input night_mode
+              option: !input switch_mode_2
       
       # Startup mode setting
       - conditions:

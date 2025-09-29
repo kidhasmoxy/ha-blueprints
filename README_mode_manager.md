@@ -4,13 +4,14 @@ A comprehensive Home Assistant blueprint that replicates the functionality of Hu
 
 ## Features
 
+- **Dynamic Mode Detection**: Automatically adapts to any input_select entity with any number of modes
 - **Time-Based Mode Changes**: Automatic mode switching based on specific times or sunrise/sunset
 - **Presence-Based Mode Changes**: Mode switching based on person/device tracker presence
-- **Button-Based Mode Changes**: Mode control via button device events
-- **Switch-Based Mode Changes**: Mode control via switch state changes
-- **Skip Logic**: Prevent certain modes (like "Away") from being overridden by time-based triggers
+- **Button-Based Mode Changes**: Mode control via button device events (up to 4 button mappings)
+- **Switch-Based Mode Changes**: Mode control via switch state changes (up to 2 switch mappings)
+- **Skip Logic**: Prevent selected modes from being overridden by time-based triggers
 - **Startup Mode Setting**: Optionally set mode based on time when Home Assistant starts
-- **Flexible Configuration**: Supports custom mode names and multiple trigger types
+- **Flexible Configuration**: Works with any mode names and any number of modes in your input_select
 
 ## Prerequisites
 
@@ -27,9 +28,16 @@ input_select:
       - Evening
       - Night
       - Away
+      - Vacation
+      - Party
     initial: Day
     icon: mdi:home-variant
 ```
+
+**Note**: The blueprint dynamically adapts to whatever modes you define in your input_select. You can have as few as 2 modes or as many as you need. Common examples:
+- **Simple**: Day, Night, Away
+- **Standard**: Day, Evening, Night, Away  
+- **Extended**: Morning, Day, Evening, Night, Away, Vacation, Party, Sleep
 
 ### Optional Entities
 
@@ -49,7 +57,7 @@ input_select:
 
 ### Mode Configuration
 
-- **Mode Input Select Entity**: Select your `input_select` entity that will store the current mode
+- **Mode Input Select Entity**: Select your `input_select` entity that will store the current mode. You'll need to manually enter the exact mode names from this entity in the configuration fields below.
 
 ### Time-Based Mode Changes
 
@@ -58,23 +66,23 @@ Enable automatic mode changes based on time with clear trigger options:
 - **Enable Time-Based Mode Changes**: Toggle to enable/disable all time-based triggers
 
 #### Day Mode Configuration
-- **Day Mode Name**: Name for your daytime mode (default: "Day")
+- **Day Mode**: Enter the exact mode name from your input_select for daytime (e.g., "Day", "Morning")
 - **Day Mode Trigger**: Choose between "Fixed Time" or "Sunrise (with optional offset)"
 - **Day Mode - Fixed Time**: Specific time to trigger Day mode (only used if "Fixed Time" selected)
 - **Day Mode - Sunrise Offset**: Minutes before (-) or after (+) sunrise (only used if "Sunrise" selected)
 
 #### Evening Mode Configuration  
-- **Evening Mode Name**: Name for your evening mode (default: "Evening")
+- **Evening Mode**: Enter the exact mode name from your input_select for evening (e.g., "Evening", "Dusk")
 - **Evening Mode Trigger**: Choose between "Fixed Time" or "Sunset (with optional offset)"
 - **Evening Mode - Fixed Time**: Specific time to trigger Evening mode (only used if "Fixed Time" selected)
 - **Evening Mode - Sunset Offset**: Minutes before (-) or after (+) sunset (only used if "Sunset" selected)
 
 #### Night Mode Configuration
-- **Night Mode Name**: Name for your night mode (default: "Night")
+- **Night Mode**: Enter the exact mode name from your input_select for night (e.g., "Night", "Sleep")
 - **Night Mode - Fixed Time**: Specific time to trigger Night mode (always uses fixed time)
 
 #### Additional Settings
-- **Skip Time Changes**: Comma-separated list of modes that should not be changed by time triggers (e.g., "Away,Vacation")
+- **Skip Time Changes for These Modes**: Comma-separated list of modes that should not be changed by time triggers (e.g., "Away,Vacation,Party")
 - **Set Mode on System Startup**: Automatically set appropriate mode when Home Assistant starts
 
 ### Presence-Based Mode Changes
@@ -86,29 +94,31 @@ Configure mode changes based on presence with flexible logic:
 - **Away Mode Trigger Logic**: Choose when to trigger Away mode:
   - "When ALL selected people/devices are away" (default - traditional behavior)
   - "When ANY selected person/device leaves" (immediate away mode)
-- **Away Mode Name**: Mode to set when away condition is met
+- **Away Mode**: Enter the exact mode name from your input_select to set when away condition is met (e.g., "Away", "Vacation")
 - **Return Trigger Logic**: Choose when to trigger return from Away mode:
   - "When ANY selected person/device returns home" (default - immediate return)
   - "When ALL selected people/devices are home" (wait for everyone)
 - **Return from Away Behavior**: Choose between time-based mode or specific mode when returning
-- **Return Mode**: Specific mode to set when returning (if not using time-based)
+- **Return Mode**: Enter the exact mode name to set when returning (if not using time-based, e.g., "Day")
 
 ### Button-Based Mode Changes
 
-Set up mode control via button events:
+Set up mode control via button events (up to 4 button mappings):
 
 - **Enable Button-Based Mode Changes**: Toggle to enable button triggers
 - **Button Devices**: Select button devices that generate events
-- **Button Events**: Configure specific button events for each mode (e.g., "button_1_single", "button_2_double")
+- **Button Mode 1-4**: Enter the exact mode names from your input_select for each button mapping (leave empty to disable)
+- **Button Event 1-4**: Configure specific button events for each mode (e.g., "button_1_single", "button_2_double")
 
 ### Switch-Based Mode Changes
 
-Configure mode changes via switch states:
+Configure mode changes via switch states (up to 2 switch mappings):
 
 - **Enable Switch-Based Mode Changes**: Toggle to enable switch triggers
 - **Switch Devices**: Select switch entities for mode control
-- **Day Mode Switch (On)**: Switch that triggers Day mode when turned on
-- **Night Mode Switch (Off)**: Switch that triggers Night mode when turned off
+- **Switch Mode 1-2**: Enter the exact mode names from your input_select for each switch mapping (leave empty to disable)
+- **Switch Entity 1-2**: Select specific switch entities for each mapping
+- **Switch State 1-2**: Choose "On" or "Off" state that triggers the mode change
 
 ## Usage Examples
 
