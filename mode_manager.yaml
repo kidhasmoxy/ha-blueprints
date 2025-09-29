@@ -1,7 +1,7 @@
 blueprint:
-  name: Mode Manager (Hubitat Style) v1.0.5
+  name: Mode Manager (Hubitat Style) v1.1.0
   description: |
-    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.5).
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.1.0).
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
@@ -462,9 +462,8 @@ trigger:
     id: "morning_time"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['time', 'earlier', 'later'] }}"
   
-  - platform: sun
-    event: sunrise
-    offset: "{{ ('-' if (sunrise_offset | int) < 0 else '') ~ '%02d:%02d' | format((sunrise_offset | int) | abs // 60, (sunrise_offset | int) | abs % 60) }}"
+  - platform: template
+    value_template: "{{ now().strftime('%H:%M') == (as_datetime(state_attr('sun.sun', 'next_rising')) + timedelta(minutes=sunrise_offset)).strftime('%H:%M') }}"
     id: "sunrise"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
@@ -474,9 +473,8 @@ trigger:
     id: "evening_time"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['time', 'earlier', 'later'] }}"
   
-  - platform: sun
-    event: sunset
-    offset: "{{ ('-' if (sunset_offset | int) < 0 else '') ~ '%02d:%02d' | format((sunset_offset | int) | abs // 60, (sunset_offset | int) | abs % 60) }}"
+  - platform: template
+    value_template: "{{ now().strftime('%H:%M') == (as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=sunset_offset)).strftime('%H:%M') }}"
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
@@ -486,9 +484,8 @@ trigger:
     id: "night_time"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['time', 'earlier', 'later'] }}"
   
-  - platform: sun
-    event: sunset
-    offset: "{{ ('-' if (night_sunset_offset | int) < 0 else '') ~ '%02d:%02d' | format((night_sunset_offset | int) | abs // 60, (night_sunset_offset | int) | abs % 60) }}"
+  - platform: template
+    value_template: "{{ now().strftime('%H:%M') == (as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=night_sunset_offset)).strftime('%H:%M') }}"
     id: "night_sunset"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
