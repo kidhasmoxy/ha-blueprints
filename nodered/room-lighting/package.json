@@ -1,0 +1,45 @@
+{
+  "name": "node-red-room-lighting",
+  "version": "1.0.0",
+  "description": "A comprehensive room lighting automation system for Node-RED and Home Assistant, replicating Hubitat's Room Lighting app functionality",
+  "main": "flows.json",
+  "scripts": {
+    "install": "echo 'Import the flow files into your Node-RED instance'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "node-red",
+    "home-assistant",
+    "room-lighting",
+    "automation",
+    "smart-home",
+    "hubitat",
+    "motion-lighting",
+    "dashboard"
+  ],
+  "author": "Home Assistant Community",
+  "license": "MIT",
+  "dependencies": {
+    "@flowfuse/node-red-dashboard": "^1.0.0",
+    "node-red-contrib-home-assistant-websocket": "^0.50.0"
+  },
+  "peerDependencies": {
+    "node-red": ">=3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/home-assistant/blueprints"
+  },
+  "bugs": {
+    "url": "https://github.com/home-assistant/blueprints/issues"
+  },
+  "homepage": "https://github.com/home-assistant/blueprints#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "*.json",
+    "README.md",
+    "docs/"
+  ]
+}
