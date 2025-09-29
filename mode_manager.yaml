@@ -70,14 +70,11 @@ blueprint:
             time: {}
     
         sunrise_offset:
-          name: "Day Mode - Sunrise Offset (minutes)"
-          description: "Minutes before (-) or after (+) sunrise"
-          default: 0
+          name: "Day Mode - Sunrise Offset"
+          description: "Time before (-) or after (+) sunrise"
+          default: { minutes: 0 }
           selector:
-            number:
-              min: -120
-              max: 120
-              step: 1
+            duration: {}
     
         morning_schedule_type:
           name: "Day Mode - Schedule Type"
@@ -164,14 +161,11 @@ blueprint:
             time: {}
     
         sunset_offset:
-          name: "Evening Mode - Sunset Offset (minutes)"
-          description: "Minutes before (-) or after (+) sunset"
-          default: 0
+          name: "Evening Mode - Sunset Offset"
+          description: "Time before (-) or after (+) sunset"
+          default: { minutes: 0 }
           selector:
-            number:
-              min: -120
-              max: 120
-              step: 1
+            duration: {}
     
         evening_schedule_type:
           name: "Evening Mode - Schedule Type"
@@ -258,14 +252,11 @@ blueprint:
             time: {}
     
         night_sunset_offset:
-          name: "Night Mode - Sunset Offset (minutes)"
-          description: "Minutes before (-) or after (+) sunset for Night mode"
-          default: 240
+          name: "Night Mode - Sunset Offset"
+          description: "Time before (-) or after (+) sunset for Night mode"
+          default: { minutes: 240 }
           selector:
-            number:
-              min: -120
-              max: 480
-              step: 1
+            duration: {}
     
         night_schedule_type:
           name: "Night Mode - Schedule Type"
@@ -554,6 +545,12 @@ variables:
   enable_morning_mode: !input enable_morning_mode
   enable_evening_mode: !input enable_evening_mode
   enable_night_mode: !input enable_night_mode
+  enable_presence_modes: !input enable_presence_modes
+  enable_switch_modes: !input enable_switch_modes
+  morning_time: !input morning_time
+  evening_time: !input evening_time
+  sunrise_offset: !input sunrise_offset
+  sunset_offset: !input sunset_offset
   presence_trackers: !input presence_trackers
   away_trigger_logic: !input away_trigger_logic
   return_trigger_logic: !input return_trigger_logic
@@ -649,14 +646,14 @@ trigger:
   
   # Switch triggers
   - platform: state
-    entity_id: "{{ switch_entity_1 if switch_entity_1 != '' else mode_entity }}"
-    to: "{{ switch_state_1 if switch_entity_1 != '' else 'dummy_state' }}"
+    entity_id: !input switch_entity_1
+    to: !input switch_state_1
     id: "switch_1"
     enabled: "{{ enable_switch_modes and switch_entity_1 != '' and switch_mode_1 != '' }}"
   
   - platform: state
-    entity_id: "{{ switch_entity_2 if switch_entity_2 != '' else mode_entity }}"
-    to: "{{ switch_state_2 if switch_entity_2 != '' else 'dummy_state' }}"
+    entity_id: !input switch_entity_2
+    to: !input switch_state_2
     id: "switch_2"
     enabled: "{{ enable_switch_modes and switch_entity_2 != '' and switch_mode_2 != '' }}"
   
@@ -913,13 +910,13 @@ action:
                       entity_id: !input mode_selector
                     data:
                       option: >
-                        {% set current_time = now().time() %}
-                        {% set morning = morning_time %}
-                        {% set evening = evening_time %}
-                        {% set night = night_time %}
-                        {% if current_time >= night or current_time < morning %}
+                        {% set nowdt = now() %}
+                        {% set m = today_at(morning_time) %}
+                        {% set e = today_at(evening_time) %}
+                        {% set n = today_at(night_time) %}
+                        {% if nowdt >= n or nowdt < m %}
                           {{ night_mode }}
-                        {% elif current_time >= evening %}
+                        {% elif nowdt >= e %}
                           {{ evening_mode }}
                         {% else %}
                           {{ morning_mode }}
@@ -997,13 +994,13 @@ action:
               entity_id: !input mode_selector
             data:
               option: >
-                {% set current_time = now().time() %}
-                {% set morning = morning_time %}
-                {% set evening = evening_time %}
-                {% set night = night_time %}
-                {% if current_time >= night or current_time < morning %}
+                {% set nowdt = now() %}
+                {% set m = today_at(morning_time) %}
+                {% set e = today_at(evening_time) %}
+                {% set n = today_at(night_time) %}
+                {% if nowdt >= n or nowdt < m %}
                   {{ night_mode }}
-                {% elif current_time >= evening %}
+                {% elif nowdt >= e %}
                   {{ evening_mode }}
                 {% else %}
                   {{ morning_mode }}
