@@ -53,23 +53,43 @@ input_select:
 
 ### Time-Based Mode Changes
 
-Enable automatic mode changes based on time:
+Enable automatic mode changes based on time with clear trigger options:
 
-- **Enable Time-Based Mode Changes**: Toggle to enable/disable time-based triggers
-- **Morning/Evening/Night Mode**: Set the mode names for each time period
-- **Morning/Evening/Night Time**: Set specific times for mode changes
-- **Use Sunrise/Sunset**: Option to use sunrise/sunset instead of fixed times
-- **Sunrise/Sunset Offset**: Adjust sunrise/sunset times by minutes
+- **Enable Time-Based Mode Changes**: Toggle to enable/disable all time-based triggers
+
+#### Day Mode Configuration
+- **Day Mode Name**: Name for your daytime mode (default: "Day")
+- **Day Mode Trigger**: Choose between "Fixed Time" or "Sunrise (with optional offset)"
+- **Day Mode - Fixed Time**: Specific time to trigger Day mode (only used if "Fixed Time" selected)
+- **Day Mode - Sunrise Offset**: Minutes before (-) or after (+) sunrise (only used if "Sunrise" selected)
+
+#### Evening Mode Configuration  
+- **Evening Mode Name**: Name for your evening mode (default: "Evening")
+- **Evening Mode Trigger**: Choose between "Fixed Time" or "Sunset (with optional offset)"
+- **Evening Mode - Fixed Time**: Specific time to trigger Evening mode (only used if "Fixed Time" selected)
+- **Evening Mode - Sunset Offset**: Minutes before (-) or after (+) sunset (only used if "Sunset" selected)
+
+#### Night Mode Configuration
+- **Night Mode Name**: Name for your night mode (default: "Night")
+- **Night Mode - Fixed Time**: Specific time to trigger Night mode (always uses fixed time)
+
+#### Additional Settings
 - **Skip Time Changes**: Comma-separated list of modes that should not be changed by time triggers (e.g., "Away,Vacation")
 - **Set Mode on System Startup**: Automatically set appropriate mode when Home Assistant starts
 
 ### Presence-Based Mode Changes
 
-Configure mode changes based on presence:
+Configure mode changes based on presence with flexible logic:
 
 - **Enable Presence-Based Mode Changes**: Toggle to enable presence detection
-- **Presence Sensors**: Select person or device_tracker entities
-- **Away Mode**: Mode to set when everyone leaves
+- **Device Trackers / Person Entities**: Select person or device_tracker entities for presence detection
+- **Away Mode Trigger Logic**: Choose when to trigger Away mode:
+  - "When ALL selected people/devices are away" (default - traditional behavior)
+  - "When ANY selected person/device leaves" (immediate away mode)
+- **Away Mode Name**: Mode to set when away condition is met
+- **Return Trigger Logic**: Choose when to trigger return from Away mode:
+  - "When ANY selected person/device returns home" (default - immediate return)
+  - "When ALL selected people/devices are home" (wait for everyone)
 - **Return from Away Behavior**: Choose between time-based mode or specific mode when returning
 - **Return Mode**: Specific mode to set when returning (if not using time-based)
 
@@ -96,16 +116,54 @@ Configure mode changes via switch states:
 
 1. Create an input_select with options: Day, Evening, Night, Away
 2. Enable time-based mode changes
-3. Set times: Morning (7:00 AM), Evening (6:00 PM), Night (10:00 PM)
-4. Set skip modes to "Away" so time changes don't override Away mode
+3. Configure Day Mode:
+   - Name: "Day"
+   - Trigger: "Fixed Time" 
+   - Fixed Time: 07:00:00
+4. Configure Evening Mode:
+   - Name: "Evening"
+   - Trigger: "Fixed Time"
+   - Fixed Time: 18:00:00
+5. Configure Night Mode:
+   - Name: "Night"
+   - Fixed Time: 22:00:00
+6. Set skip modes to "Away" so time changes don't override Away mode
+
+### Sunrise/Sunset Setup
+
+For a more natural lighting schedule:
+
+1. Configure Day Mode:
+   - Name: "Day"
+   - Trigger: "Sunrise (with optional offset)"
+   - Sunrise Offset: 30 (triggers 30 minutes after sunrise)
+2. Configure Evening Mode:
+   - Name: "Evening" 
+   - Trigger: "Sunset (with optional offset)"
+   - Sunset Offset: -15 (triggers 15 minutes before sunset)
+3. Night Mode still uses fixed time: 22:00:00
 
 ### Presence + Time Setup
 
 1. Configure time-based modes as above
 2. Enable presence-based changes
-3. Select your person entities
-4. Set Away mode to "Away"
-5. Set return behavior to "time_based" so returning home sets the appropriate mode for the current time
+3. Select your person entities or device trackers
+4. Configure Away logic:
+   - Away Mode Trigger Logic: "When ALL selected people/devices are away"
+   - Away Mode Name: "Away"
+5. Configure Return logic:
+   - Return Trigger Logic: "When ANY selected person/device returns home"
+   - Return from Away Behavior: "Use time-based mode (recommended)"
+
+### Alternative Presence Scenarios
+
+**Immediate Away Mode** (for security/energy savings):
+- Away Mode Trigger Logic: "When ANY selected person/device leaves"
+- Useful for immediately turning off lights/HVAC when first person leaves
+
+**Wait for Everyone Home**:
+- Return Trigger Logic: "When ALL selected people/devices are home"  
+- Useful for family situations where you want to wait until everyone is back
 
 ### Button Control
 

@@ -26,74 +26,94 @@ blueprint:
       selector:
         boolean: {}
     
+    # Morning/Day Mode Settings
     morning_mode:
-      name: Morning Mode
-      description: Mode to set in the morning
+      name: "Day Mode Name"
+      description: "Mode to set during daytime (triggered by morning time or sunrise)"
       default: "Day"
       selector:
         text: {}
     
+    morning_trigger_type:
+      name: "Day Mode Trigger"
+      description: "How to trigger Day mode"
+      default: "time"
+      selector:
+        select:
+          options:
+            - label: "Fixed Time"
+              value: "time"
+            - label: "Sunrise (with optional offset)"
+              value: "sunrise"
+    
     morning_time:
-      name: Morning Time
-      description: Time to switch to morning mode
+      name: "Day Mode - Fixed Time"
+      description: "Fixed time to switch to Day mode (only used if 'Fixed Time' selected above)"
       default: "07:00:00"
       selector:
         time: {}
     
+    sunrise_offset:
+      name: "Day Mode - Sunrise Offset (minutes)"
+      description: "Minutes before (-) or after (+) sunrise to trigger Day mode (only used if 'Sunrise' selected above)"
+      default: 0
+      selector:
+        number:
+          min: -120
+          max: 120
+          step: 1
+    
+    # Evening Mode Settings
     evening_mode:
-      name: Evening Mode
-      description: Mode to set in the evening
+      name: "Evening Mode Name"
+      description: "Mode to set during evening (triggered by evening time or sunset)"
       default: "Evening"
       selector:
         text: {}
     
+    evening_trigger_type:
+      name: "Evening Mode Trigger"
+      description: "How to trigger Evening mode"
+      default: "time"
+      selector:
+        select:
+          options:
+            - label: "Fixed Time"
+              value: "time"
+            - label: "Sunset (with optional offset)"
+              value: "sunset"
+    
     evening_time:
-      name: Evening Time
-      description: Time to switch to evening mode
+      name: "Evening Mode - Fixed Time"
+      description: "Fixed time to switch to Evening mode (only used if 'Fixed Time' selected above)"
       default: "18:00:00"
       selector:
         time: {}
     
+    sunset_offset:
+      name: "Evening Mode - Sunset Offset (minutes)"
+      description: "Minutes before (-) or after (+) sunset to trigger Evening mode (only used if 'Sunset' selected above)"
+      default: 0
+      selector:
+        number:
+          min: -120
+          max: 120
+          step: 1
+    
+    # Night Mode Settings
     night_mode:
-      name: Night Mode
-      description: Mode to set at night
+      name: "Night Mode Name"
+      description: "Mode to set at night (always uses fixed time)"
       default: "Night"
       selector:
         text: {}
     
     night_time:
-      name: Night Time
-      description: Time to switch to night mode
+      name: "Night Mode - Fixed Time"
+      description: "Fixed time to switch to Night mode"
       default: "22:00:00"
       selector:
         time: {}
-    
-    use_sunrise_sunset:
-      name: Use Sunrise/Sunset
-      description: Use sunrise/sunset instead of fixed times for morning/evening
-      default: false
-      selector:
-        boolean: {}
-    
-    sunrise_offset:
-      name: Sunrise Offset (minutes)
-      description: Offset from sunrise in minutes (negative for before, positive for after)
-      default: 0
-      selector:
-        number:
-          min: -120
-          max: 120
-          step: 1
-    
-    sunset_offset:
-      name: Sunset Offset (minutes)
-      description: Offset from sunset in minutes (negative for before, positive for after)
-      default: 0
-      selector:
-        number:
-          min: -120
-          max: 120
-          step: 1
     
     skip_time_modes:
       name: Skip Time Changes for These Modes
@@ -119,23 +139,46 @@ blueprint:
       selector:
         boolean: {}
     
-    presence_sensors:
-      name: Presence Sensors
-      description: Select person or device tracker entities for presence detection
-      default: {}
+    presence_trackers:
+      name: Device Trackers / Person Entities
+      description: Select device tracker or person entities for presence detection
+      default: []
       selector:
-        entity:
-          domain: 
-            - person
-            - device_tracker
-          multiple: true
+        target:
+          entity:
+            - domain: person
+            - domain: device_tracker
+    
+    away_trigger_logic:
+      name: Away Mode Trigger Logic
+      description: When to trigger Away mode
+      default: "all_away"
+      selector:
+        select:
+          options:
+            - label: "When ALL selected people/devices are away"
+              value: "all_away"
+            - label: "When ANY selected person/device leaves"
+              value: "any_away"
     
     away_mode:
-      name: Away Mode
-      description: Mode to set when everyone leaves
+      name: Away Mode Name
+      description: Mode to set when away condition is met
       default: "Away"
       selector:
         text: {}
+    
+    return_trigger_logic:
+      name: Return Trigger Logic
+      description: When to trigger return from Away mode
+      default: "any_home"
+      selector:
+        select:
+          options:
+            - label: "When ANY selected person/device returns home"
+              value: "any_home"
+            - label: "When ALL selected people/devices are home"
+              value: "all_home"
     
     return_from_away_mode:
       name: Return from Away Behavior
@@ -144,7 +187,7 @@ blueprint:
       selector:
         select:
           options:
-            - label: "Use time-based mode"
+            - label: "Use time-based mode (recommended)"
               value: "time_based"
             - label: "Use specific mode"
               value: "specific"
@@ -254,48 +297,59 @@ variables:
   skip_modes: !input skip_time_modes
   current_mode: "{{ states(mode_entity) }}"
   skip_mode_list: "{{ skip_modes.split(',') | map('trim') | list }}"
+  morning_trigger_type: !input morning_trigger_type
+  evening_trigger_type: !input evening_trigger_type
+  enable_time_modes: !input enable_time_modes
+  presence_trackers: !input presence_trackers
+  away_trigger_logic: !input away_trigger_logic
+  return_trigger_logic: !input return_trigger_logic
+  away_mode: !input away_mode
 
 trigger:
-  # Time-based triggers
+  # Day Mode triggers
   - platform: time
     at: !input morning_time
     id: "morning_time"
-    enabled: !input enable_time_modes
-  
-  - platform: time
-    at: !input evening_time
-    id: "evening_time"
-    enabled: !input enable_time_modes
-  
-  - platform: time
-    at: !input night_time
-    id: "night_time"
-    enabled: !input enable_time_modes
+    enabled: "{{ enable_time_modes and morning_trigger_type == 'time' }}"
   
   - platform: sun
     event: sunrise
     offset: !input sunrise_offset
     id: "sunrise"
-    enabled: "{{ enable_time_modes and use_sunrise_sunset }}"
+    enabled: "{{ enable_time_modes and morning_trigger_type == 'sunrise' }}"
+  
+  # Evening Mode triggers
+  - platform: time
+    at: !input evening_time
+    id: "evening_time"
+    enabled: "{{ enable_time_modes and evening_trigger_type == 'time' }}"
   
   - platform: sun
     event: sunset
     offset: !input sunset_offset
     id: "sunset"
-    enabled: "{{ enable_time_modes and use_sunrise_sunset }}"
+    enabled: "{{ enable_time_modes and evening_trigger_type == 'sunset' }}"
+  
+  # Night Mode trigger (always fixed time)
+  - platform: time
+    at: !input night_time
+    id: "night_time"
+    enabled: !input enable_time_modes
   
   # Presence triggers
   - platform: state
-    entity_id: !input presence_sensors
-    to: "not_home"
+    entity_id: "{{ presence_trackers.entity_id if presence_trackers else [] }}"
+    to: 
+      - "not_home"
+      - "away"
     id: "presence_away"
-    enabled: !input enable_presence_modes
+    enabled: "{{ enable_presence_modes and presence_trackers.entity_id | default([]) | length > 0 }}"
   
   - platform: state
-    entity_id: !input presence_sensors
+    entity_id: "{{ presence_trackers.entity_id if presence_trackers else [] }}"
     to: "home"
     id: "presence_home"
-    enabled: !input enable_presence_modes
+    enabled: "{{ enable_presence_modes and presence_trackers.entity_id | default([]) | length > 0 }}"
   
   # Button triggers
   - platform: event
@@ -370,15 +424,20 @@ action:
             data:
               option: !input night_mode
       
-      # Presence-based mode changes
+      # Presence-based mode changes - Away
       - conditions:
           - condition: trigger
             id: "presence_away"
           - condition: template
             value_template: >
-              {% set presence_entities = presence_sensors %}
-              {% if presence_entities %}
-                {{ expand(presence_entities) | selectattr('state', 'eq', 'home') | list | length == 0 }}
+              {% set tracker_entities = presence_trackers.entity_id | default([]) %}
+              {% set logic = away_trigger_logic %}
+              {% if tracker_entities | length == 0 %}
+                false
+              {% elif logic == 'all_away' %}
+                {{ expand(tracker_entities) | selectattr('state', 'in', ['home']) | list | length == 0 }}
+              {% elif logic == 'any_away' %}
+                {{ expand(tracker_entities) | selectattr('state', 'in', ['not_home', 'away']) | list | length > 0 }}
               {% else %}
                 false
               {% endif %}
@@ -389,11 +448,25 @@ action:
             data:
               option: !input away_mode
       
+      # Presence-based mode changes - Return Home
       - conditions:
           - condition: trigger
             id: "presence_home"
           - condition: template
-            value_template: "{{ states(mode_selector) == away_mode }}"
+            value_template: "{{ current_mode == away_mode }}"
+          - condition: template
+            value_template: >
+              {% set tracker_entities = presence_trackers.entity_id | default([]) %}
+              {% set logic = return_trigger_logic %}
+              {% if tracker_entities | length == 0 %}
+                false
+              {% elif logic == 'any_home' %}
+                {{ expand(tracker_entities) | selectattr('state', 'eq', 'home') | list | length > 0 }}
+              {% elif logic == 'all_home' %}
+                {{ expand(tracker_entities) | selectattr('state', 'eq', 'home') | list | length == tracker_entities | length }}
+              {% else %}
+                false
+              {% endif %}
         sequence:
           - choose:
               - conditions:
