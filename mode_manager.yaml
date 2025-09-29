@@ -1,7 +1,7 @@
 blueprint:
-  name: Mode Manager (Hubitat Style) v1.0.0
+  name: Mode Manager (Hubitat Style) v1.0.1
   description: |
-    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.0).
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.1).
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
@@ -433,8 +433,6 @@ variables:
   evening_time: !input evening_time
   sunrise_offset: !input sunrise_offset
   sunset_offset: !input sunset_offset
-  sunrise_offset_formatted: "{{ ('-' if (sunrise_offset | int) < 0 else '') ~ ('%02d:%02d:00' % ((((sunrise_offset | int) | abs) // 60), (((sunrise_offset | int) | abs) % 60))) }}"
-  sunset_offset_formatted: "{{ ('-' if (sunset_offset | int) < 0 else '') ~ ('%02d:%02d:00' % ((((sunset_offset | int) | abs) // 60), (((sunset_offset | int) | abs) % 60))) }}"
   presence_trackers: !input presence_trackers
   away_trigger_logic: !input away_trigger_logic
   return_trigger_logic: !input return_trigger_logic
@@ -454,7 +452,6 @@ variables:
   night_schedule: !input night_schedule
   night_time: !input night_time
   night_sunset_offset: !input night_sunset_offset
-  night_sunset_offset_formatted: "{{ ('-' if (night_sunset_offset | int) < 0 else '') ~ ('%02d:%02d:00' % ((((night_sunset_offset | int) | abs) // 60), (((night_sunset_offset | int) | abs) % 60))) }}"
   current_weekday: "{{ now().strftime('%A').lower() }}"
   guest_mode_sensor: !input guest_mode_sensor
 
@@ -467,7 +464,7 @@ trigger:
   
   - platform: sun
     event: sunrise
-    offset: "{{ ('-' if (sunrise_offset | int) < 0 else '') ~ ('%02d:%02d:00' % ((((sunrise_offset | int) | abs) // 60), (((sunrise_offset | int) | abs) % 60))) }}"
+    offset: "{{ '%s%02d:%02d:00' % ('-' if sunrise_offset|int < 0 else '', (sunrise_offset|int)|abs // 60, (sunrise_offset|int)|abs % 60) }}"
     id: "sunrise"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
@@ -479,7 +476,7 @@ trigger:
   
   - platform: sun
     event: sunset
-    offset: "{{ sunset_offset_formatted }}"
+    offset: "{{ '%s%02d:%02d:00' % ('-' if sunset_offset|int < 0 else '', (sunset_offset|int)|abs // 60, (sunset_offset|int)|abs % 60) }}"
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
@@ -491,7 +488,7 @@ trigger:
   
   - platform: sun
     event: sunset
-    offset: "{{ night_sunset_offset_formatted }}"
+    offset: "{{ '%s%02d:%02d:00' % ('-' if night_sunset_offset|int < 0 else '', (night_sunset_offset|int)|abs // 60, (night_sunset_offset|int)|abs % 60) }}"
     id: "night_sunset"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
