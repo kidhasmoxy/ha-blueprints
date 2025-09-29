@@ -1,0 +1,503 @@
+blueprint:
+  name: Mode Manager (Hubitat Style)
+  description: |
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality.
+    Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
+    Supports sunrise/sunset triggers, presence detection, button events, and switch states.
+  domain: automation
+  input:
+    # ==========================================
+    # MODE CONFIGURATION
+    # ==========================================
+    mode_selector:
+      name: Mode Input Select Entity
+      description: Select the input_select entity that will store the current mode
+      selector:
+        entity:
+          domain: input_select
+    
+    # ==========================================
+    # TIME-BASED MODE CHANGES
+    # ==========================================
+    enable_time_modes:
+      name: Enable Time-Based Mode Changes
+      description: Enable automatic mode changes based on time
+      default: true
+      selector:
+        boolean: {}
+    
+    morning_mode:
+      name: Morning Mode
+      description: Mode to set in the morning
+      default: "Day"
+      selector:
+        text: {}
+    
+    morning_time:
+      name: Morning Time
+      description: Time to switch to morning mode
+      default: "07:00:00"
+      selector:
+        time: {}
+    
+    evening_mode:
+      name: Evening Mode
+      description: Mode to set in the evening
+      default: "Evening"
+      selector:
+        text: {}
+    
+    evening_time:
+      name: Evening Time
+      description: Time to switch to evening mode
+      default: "18:00:00"
+      selector:
+        time: {}
+    
+    night_mode:
+      name: Night Mode
+      description: Mode to set at night
+      default: "Night"
+      selector:
+        text: {}
+    
+    night_time:
+      name: Night Time
+      description: Time to switch to night mode
+      default: "22:00:00"
+      selector:
+        time: {}
+    
+    use_sunrise_sunset:
+      name: Use Sunrise/Sunset
+      description: Use sunrise/sunset instead of fixed times for morning/evening
+      default: false
+      selector:
+        boolean: {}
+    
+    sunrise_offset:
+      name: Sunrise Offset (minutes)
+      description: Offset from sunrise in minutes (negative for before, positive for after)
+      default: 0
+      selector:
+        number:
+          min: -120
+          max: 120
+          step: 1
+    
+    sunset_offset:
+      name: Sunset Offset (minutes)
+      description: Offset from sunset in minutes (negative for before, positive for after)
+      default: 0
+      selector:
+        number:
+          min: -120
+          max: 120
+          step: 1
+    
+    skip_time_modes:
+      name: Skip Time Changes for These Modes
+      description: Modes that should not be changed by time-based triggers (e.g., Away)
+      default: "Away"
+      selector:
+        text: {}
+    
+    set_mode_on_startup:
+      name: Set Mode on System Startup
+      description: Set mode based on time table when Home Assistant starts
+      default: false
+      selector:
+        boolean: {}
+    
+    # ==========================================
+    # PRESENCE-BASED MODE CHANGES
+    # ==========================================
+    enable_presence_modes:
+      name: Enable Presence-Based Mode Changes
+      description: Enable automatic mode changes based on presence
+      default: false
+      selector:
+        boolean: {}
+    
+    presence_sensors:
+      name: Presence Sensors
+      description: Select person or device tracker entities for presence detection
+      default: {}
+      selector:
+        entity:
+          domain: 
+            - person
+            - device_tracker
+          multiple: true
+    
+    away_mode:
+      name: Away Mode
+      description: Mode to set when everyone leaves
+      default: "Away"
+      selector:
+        text: {}
+    
+    return_from_away_mode:
+      name: Return from Away Behavior
+      description: How to handle returning from away mode
+      default: "time_based"
+      selector:
+        select:
+          options:
+            - label: "Use time-based mode"
+              value: "time_based"
+            - label: "Use specific mode"
+              value: "specific"
+    
+    return_mode:
+      name: Return Mode
+      description: Specific mode to set when returning (if not using time-based)
+      default: "Day"
+      selector:
+        text: {}
+    
+    # ==========================================
+    # BUTTON-BASED MODE CHANGES
+    # ==========================================
+    enable_button_modes:
+      name: Enable Button-Based Mode Changes
+      description: Enable mode changes triggered by button events
+      default: false
+      selector:
+        boolean: {}
+    
+    button_devices:
+      name: Button Devices
+      description: Select button devices for mode control
+      default: {}
+      selector:
+        entity:
+          domain: 
+            - event
+            - sensor
+          multiple: true
+    
+    button_day_event:
+      name: Day Mode Button Event
+      description: Button event to trigger Day mode (e.g., "button_1_single")
+      default: ""
+      selector:
+        text: {}
+    
+    button_evening_event:
+      name: Evening Mode Button Event
+      description: Button event to trigger Evening mode
+      default: ""
+      selector:
+        text: {}
+    
+    button_night_event:
+      name: Night Mode Button Event
+      description: Button event to trigger Night mode
+      default: ""
+      selector:
+        text: {}
+    
+    button_away_event:
+      name: Away Mode Button Event
+      description: Button event to trigger Away mode
+      default: ""
+      selector:
+        text: {}
+    
+    # ==========================================
+    # SWITCH-BASED MODE CHANGES
+    # ==========================================
+    enable_switch_modes:
+      name: Enable Switch-Based Mode Changes
+      description: Enable mode changes triggered by switch states
+      default: false
+      selector:
+        boolean: {}
+    
+    switch_devices:
+      name: Switch Devices
+      description: Select switch entities for mode control
+      default: {}
+      selector:
+        entity:
+          domain: 
+            - switch
+            - light
+            - input_boolean
+          multiple: true
+    
+    switch_day_on:
+      name: Day Mode Switch (On)
+      description: Switch that triggers Day mode when turned on
+      default: ""
+      selector:
+        entity:
+          domain: 
+            - switch
+            - light
+            - input_boolean
+    
+    switch_night_off:
+      name: Night Mode Switch (Off)
+      description: Switch that triggers Night mode when turned off
+      default: ""
+      selector:
+        entity:
+          domain: 
+            - switch
+            - light
+            - input_boolean
+
+variables:
+  mode_entity: !input mode_selector
+  skip_modes: !input skip_time_modes
+  current_mode: "{{ states(mode_entity) }}"
+  skip_mode_list: "{{ skip_modes.split(',') | map('trim') | list }}"
+
+trigger:
+  # Time-based triggers
+  - platform: time
+    at: !input morning_time
+    id: "morning_time"
+    enabled: !input enable_time_modes
+  
+  - platform: time
+    at: !input evening_time
+    id: "evening_time"
+    enabled: !input enable_time_modes
+  
+  - platform: time
+    at: !input night_time
+    id: "night_time"
+    enabled: !input enable_time_modes
+  
+  - platform: sun
+    event: sunrise
+    offset: !input sunrise_offset
+    id: "sunrise"
+    enabled: "{{ enable_time_modes and use_sunrise_sunset }}"
+  
+  - platform: sun
+    event: sunset
+    offset: !input sunset_offset
+    id: "sunset"
+    enabled: "{{ enable_time_modes and use_sunrise_sunset }}"
+  
+  # Presence triggers
+  - platform: state
+    entity_id: !input presence_sensors
+    to: "not_home"
+    id: "presence_away"
+    enabled: !input enable_presence_modes
+  
+  - platform: state
+    entity_id: !input presence_sensors
+    to: "home"
+    id: "presence_home"
+    enabled: !input enable_presence_modes
+  
+  # Button triggers
+  - platform: event
+    event_type: 
+      - zha_event
+      - deconz_event
+      - hue_event
+    id: "button_event"
+    enabled: !input enable_button_modes
+  
+  # Switch triggers
+  - platform: state
+    entity_id: !input switch_day_on
+    to: "on"
+    id: "switch_day_on"
+    enabled: !input enable_switch_modes
+  
+  - platform: state
+    entity_id: !input switch_night_off
+    to: "off"
+    id: "switch_night_off"
+    enabled: !input enable_switch_modes
+  
+  # Startup trigger
+  - platform: homeassistant
+    event: start
+    id: "startup"
+    enabled: !input set_mode_on_startup
+
+condition: []
+
+action:
+  - choose:
+      # Time-based mode changes
+      - conditions:
+          - condition: trigger
+            id: 
+              - "morning_time"
+              - "sunrise"
+          - condition: template
+            value_template: "{{ current_mode not in skip_mode_list }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input morning_mode
+      
+      - conditions:
+          - condition: trigger
+            id: 
+              - "evening_time"
+              - "sunset"
+          - condition: template
+            value_template: "{{ current_mode not in skip_mode_list }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input evening_mode
+      
+      - conditions:
+          - condition: trigger
+            id: "night_time"
+          - condition: template
+            value_template: "{{ current_mode not in skip_mode_list }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input night_mode
+      
+      # Presence-based mode changes
+      - conditions:
+          - condition: trigger
+            id: "presence_away"
+          - condition: template
+            value_template: >
+              {% set presence_entities = presence_sensors %}
+              {% if presence_entities %}
+                {{ expand(presence_entities) | selectattr('state', 'eq', 'home') | list | length == 0 }}
+              {% else %}
+                false
+              {% endif %}
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input away_mode
+      
+      - conditions:
+          - condition: trigger
+            id: "presence_home"
+          - condition: template
+            value_template: "{{ states(mode_selector) == away_mode }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ return_from_away_mode == 'time_based' }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: !input mode_selector
+                    data:
+                      option: >
+                        {% set current_time = now().time() %}
+                        {% set morning = morning_time %}
+                        {% set evening = evening_time %}
+                        {% set night = night_time %}
+                        {% if current_time >= night or current_time < morning %}
+                          {{ night_mode }}
+                        {% elif current_time >= evening %}
+                          {{ evening_mode }}
+                        {% else %}
+                          {{ morning_mode }}
+                        {% endif %}
+            default:
+              - service: input_select.select_option
+                target:
+                  entity_id: !input mode_selector
+                data:
+                  option: !input return_mode
+      
+      # Button-based mode changes
+      - conditions:
+          - condition: trigger
+            id: "button_event"
+          - condition: template
+            value_template: >
+              {% set event_data = trigger.event.data %}
+              {% set button_day = button_day_event %}
+              {% set button_evening = button_evening_event %}
+              {% set button_night = button_night_event %}
+              {% set button_away = button_away_event %}
+              {{ event_data.command in [button_day, button_evening, button_night, button_away] }}
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: >
+                {% set event_data = trigger.event.data %}
+                {% set button_day = button_day_event %}
+                {% set button_evening = button_evening_event %}
+                {% set button_night = button_night_event %}
+                {% set button_away = button_away_event %}
+                {% if event_data.command == button_day %}
+                  {{ morning_mode }}
+                {% elif event_data.command == button_evening %}
+                  {{ evening_mode }}
+                {% elif event_data.command == button_night %}
+                  {{ night_mode }}
+                {% elif event_data.command == button_away %}
+                  {{ away_mode }}
+                {% endif %}
+      
+      # Switch-based mode changes
+      - conditions:
+          - condition: trigger
+            id: "switch_day_on"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input morning_mode
+      
+      - conditions:
+          - condition: trigger
+            id: "switch_night_off"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: !input night_mode
+      
+      # Startup mode setting
+      - conditions:
+          - condition: trigger
+            id: "startup"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input mode_selector
+            data:
+              option: >
+                {% set current_time = now().time() %}
+                {% set morning = morning_time %}
+                {% set evening = evening_time %}
+                {% set night = night_time %}
+                {% if current_time >= night or current_time < morning %}
+                  {{ night_mode }}
+                {% elif current_time >= evening %}
+                  {{ evening_mode }}
+                {% else %}
+                  {{ morning_mode }}
+                {% endif %}
+
+mode: queued
+max: 10
