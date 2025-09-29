@@ -7,9 +7,11 @@ This Home Assistant blueprint replicates the comprehensive functionality of Hubi
 ### 🏠 Home Assistant Area Integration
 - **Area Selection**: Choose from your configured Home Assistant Areas
 - **Automatic Naming**: Room name automatically populated from area name
-- **Device Filtering**: Device selectors filtered to show only area devices
+- **Dual Device Selectors**: Each device type has both area-filtered and all-area options
+- **Smart Combination**: Blueprint automatically combines selections from both selectors
 - **Name Override**: Option to override area name with custom room name
-- **Simplified Setup**: Reduces configuration complexity for organized homes
+- **Flexible Setup**: Use area filtering for convenience or manual selection for precision
+- **Best of Both Worlds**: Get area filtering benefits while maintaining full control
 
 ### ✅ Core Hubitat Room Lighting Features
 - **Multiple Activation Methods**: Motion sensors, contact sensors, buttons/switches
@@ -63,12 +65,21 @@ input_select:
 ## Configuration Guide
 
 ### Basic Setup
-1. **Area Selection**: Select a Home Assistant Area to automatically populate the room name and filter devices
+1. **Area Selection**: Select a Home Assistant Area to automatically populate the room name and enable area filtering
 2. **Room Name Override**: Optionally override the area name with a custom room name
-3. **Lights to Control**: Select all lights, switches, and dimmers for this room (filtered by area if selected)
-4. **Motion Sensors**: Select motion sensors that should activate lights (filtered by area if selected)
-5. **Contact Sensors**: Select door/window sensors (optional, filtered by area if selected)
-6. **Button Devices**: Select buttons or switches for manual control (optional)
+3. **Device Selection**: For each device type, you'll see two options:
+   - **Area Filtered**: Shows only devices from the selected area (recommended)
+   - **All Areas**: Shows devices from any area (for cross-room setups)
+4. **Smart Combination**: The blueprint automatically combines your selections from both options
+
+**Device Types Available**:
+- **Lights to Control**: Lights, switches, and dimmers
+- **Motion Sensors**: Motion detection devices
+- **Contact Sensors**: Door/window sensors (optional)
+- **Button Devices**: Buttons or switches for manual control (optional)
+- **Additional Sensors**: Illuminance, TV/media player, and sleep sensors
+
+**Usage Tip**: Most users will only need the area-filtered selectors. Use the "All Areas" selectors only when you need devices from other rooms (e.g., hallway motion sensor for bedroom lights).
 
 ### Activation Settings
 - **Enable Motion Activation**: Turn on for motion-based lighting

@@ -21,10 +21,23 @@ blueprint:
       selector:
         text: {}
     
-    # Device Selection
+    # Device Selection (Area Filtered)
     lights_to_control:
-      name: Lights to Control
-      description: Select all lights, switches, and dimmers to control (filtered by area if selected)
+      name: Lights to Control (Area Filtered)
+      description: Select lights from the selected area (recommended)
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: light
+            - domain: switch
+            - domain: fan
+          area: !input area_selector
+    
+    # Alternative Device Selection (All Devices)
+    lights_to_control_all:
+      name: Lights to Control (All Devices)
+      description: Select lights from any area (use if area filtering is not desired)
       default: {}
       selector:
         target:
@@ -33,10 +46,21 @@ blueprint:
             - domain: switch
             - domain: fan
     
-    # Activation Triggers
+    # Activation Triggers (Area Filtered)
     motion_sensors:
-      name: Motion Sensors
-      description: Motion sensors that activate lights (filtered by area if selected)
+      name: Motion Sensors (Area Filtered)
+      description: Motion sensors from the selected area (recommended)
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: binary_sensor
+            device_class: motion
+          area: !input area_selector
+    
+    motion_sensors_all:
+      name: Motion Sensors (All Areas)
+      description: Motion sensors from any area (use if area filtering is not desired)
       default: {}
       selector:
         target:
@@ -45,8 +69,22 @@ blueprint:
             device_class: motion
     
     contact_sensors:
-      name: Contact Sensors (Doors/Windows)
-      description: Contact sensors that activate lights when opened (filtered by area if selected)
+      name: Contact Sensors (Area Filtered)
+      description: Contact sensors from the selected area (recommended)
+      default: {}
+      selector:
+        target:
+          entity:
+            domain: binary_sensor
+            device_class: 
+              - door
+              - window
+              - garage_door
+          area: !input area_selector
+    
+    contact_sensors_all:
+      name: Contact Sensors (All Areas)
+      description: Contact sensors from any area (use if area filtering is not desired)
       default: {}
       selector:
         target:
@@ -58,8 +96,20 @@ blueprint:
               - garage_door
     
     button_devices:
-      name: Button Devices
-      description: Buttons, switches, or remotes that activate lights
+      name: Button Devices (Area Filtered)
+      description: Button devices from the selected area (recommended)
+      default: {}
+      selector:
+        target:
+          entity:
+            - domain: sensor
+            - domain: binary_sensor
+            - domain: device_tracker
+          area: !input area_selector
+    
+    button_devices_all:
+      name: Button Devices (All Areas)
+      description: Button devices from any area (use if area filtering is not desired)
       default: {}
       selector:
         target:
@@ -69,8 +119,19 @@ blueprint:
             - domain: device_tracker
     
     illuminance_sensor:
-      name: Illuminance Sensor (Optional)
-      description: Light sensor to prevent activation during bright conditions
+      name: Illuminance Sensor (Area Filtered)
+      description: Light sensor from the selected area (recommended)
+      default: {}
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+          filter:
+            - area: !input area_selector
+    
+    illuminance_sensor_all:
+      name: Illuminance Sensor (All Areas)
+      description: Light sensor from any area (use if area filtering is not desired)
       default: {}
       selector:
         entity:
@@ -287,8 +348,18 @@ blueprint:
         boolean: {}
     
     tv_media_player:
-      name: TV/Media Player Entity
-      description: Media player to check if TV is on
+      name: TV/Media Player (Area Filtered)
+      description: Media player from the selected area (recommended)
+      default: {}
+      selector:
+        entity:
+          domain: media_player
+          filter:
+            - area: !input area_selector
+    
+    tv_media_player_all:
+      name: TV/Media Player (All Areas)
+      description: Media player from any area (use if area filtering is not desired)
       default: {}
       selector:
         entity:
@@ -302,8 +373,21 @@ blueprint:
         boolean: {}
     
     sleep_sensor:
-      name: Sleep Sensor/Switch
-      description: Entity that indicates if someone is sleeping
+      name: Sleep Sensor (Area Filtered)
+      description: Sleep sensor from the selected area (recommended)
+      default: {}
+      selector:
+        entity:
+          domain: 
+            - binary_sensor
+            - input_boolean
+            - switch
+          filter:
+            - area: !input area_selector
+    
+    sleep_sensor_all:
+      name: Sleep Sensor (All Areas)
+      description: Sleep sensor from any area (use if area filtering is not desired)
       default: {}
       selector:
         entity:
@@ -395,6 +479,36 @@ variables:
       "Room"
     {% endif %}
   
+  # Combine area-filtered and all-area device selections
+  effective_lights: >
+    {% set area_lights = lights_to_control.entity_id | default([]) %}
+    {% set all_lights = lights_to_control_all.entity_id | default([]) %}
+    {{ (area_lights + all_lights) | unique | list }}
+  
+  effective_motion_sensors: >
+    {% set area_motion = motion_sensors.entity_id | default([]) %}
+    {% set all_motion = motion_sensors_all.entity_id | default([]) %}
+    {{ (area_motion + all_motion) | unique | list }}
+  
+  effective_contact_sensors: >
+    {% set area_contact = contact_sensors.entity_id | default([]) %}
+    {% set all_contact = contact_sensors_all.entity_id | default([]) %}
+    {{ (area_contact + all_contact) | unique | list }}
+  
+  effective_button_devices: >
+    {% set area_buttons = button_devices.entity_id | default([]) %}
+    {% set all_buttons = button_devices_all.entity_id | default([]) %}
+    {{ (area_buttons + all_buttons) | unique | list }}
+  
+  effective_illuminance_sensor: >
+    {{ illuminance_sensor if illuminance_sensor else illuminance_sensor_all }}
+  
+  effective_tv_media_player: >
+    {{ tv_media_player if tv_media_player else tv_media_player_all }}
+  
+  effective_sleep_sensor: >
+    {{ sleep_sensor if sleep_sensor else sleep_sensor_all }}
+  
   # Get current mode from input_select.home_mode
   current_mode: "{{ states('input_select.home_mode') | lower }}"
   
@@ -446,48 +560,48 @@ variables:
   
   # Check if any motion sensors are active
   any_motion_active: >
-    {{ expand(motion_sensors.entity_id) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+    {{ expand(effective_motion_sensors) | selectattr('state', 'eq', 'on') | list | count > 0 }}
   
   # Check if all motion sensors are clear
   all_motion_clear: >
-    {{ expand(motion_sensors.entity_id) | selectattr('state', 'eq', 'off') | list | count == (expand(motion_sensors.entity_id) | list | count) }}
+    {{ expand(effective_motion_sensors) | selectattr('state', 'eq', 'off') | list | count == (expand(effective_motion_sensors) | list | count) }}
   
   # Check if any contact sensors are open
   any_contact_open: >
-    {{ expand(contact_sensors.entity_id) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+    {{ expand(effective_contact_sensors) | selectattr('state', 'eq', 'on') | list | count > 0 }}
   
   # Check if all contact sensors are closed
   all_contacts_closed: >
-    {{ expand(contact_sensors.entity_id) | selectattr('state', 'eq', 'off') | list | count == (expand(contact_sensors.entity_id) | list | count) }}
+    {{ expand(effective_contact_sensors) | selectattr('state', 'eq', 'off') | list | count == (expand(effective_contact_sensors) | list | count) }}
   
   # Check if any lights are currently on
   any_lights_on: >
-    {{ expand(lights_to_control.entity_id) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+    {{ expand(effective_lights) | selectattr('state', 'eq', 'on') | list | count > 0 }}
   
   # Check if all lights are currently off
   all_lights_off: >
-    {{ expand(lights_to_control.entity_id) | selectattr('state', 'eq', 'off') | list | count == (expand(lights_to_control.entity_id) | list | count) }}
+    {{ expand(effective_lights) | selectattr('state', 'eq', 'off') | list | count == (expand(effective_lights) | list | count) }}
   
   # Check illuminance condition
   illuminance_ok: >
-    {% if enable_illuminance_control and illuminance_sensor.entity_id %}
-      {{ states(illuminance_sensor.entity_id) | int(999) < illuminance_threshold }}
+    {% if enable_illuminance_control and effective_illuminance_sensor %}
+      {{ states(effective_illuminance_sensor) | int(999) < illuminance_threshold }}
     {% else %}
       true
     {% endif %}
   
   # Check TV condition
   tv_condition_ok: >
-    {% if disable_when_tv_on and tv_media_player.entity_id %}
-      {{ not is_state(tv_media_player.entity_id, 'playing') }}
+    {% if disable_when_tv_on and effective_tv_media_player %}
+      {{ not is_state(effective_tv_media_player, 'playing') }}
     {% else %}
       true
     {% endif %}
   
   # Check sleep condition
   sleep_condition_ok: >
-    {% if disable_when_sleeping and sleep_sensor.entity_id %}
-      {{ is_state(sleep_sensor.entity_id, 'off') }}
+    {% if disable_when_sleeping and effective_sleep_sensor %}
+      {{ is_state(effective_sleep_sensor, 'off') }}
     {% else %}
       true
     {% endif %}
@@ -495,13 +609,13 @@ variables:
 trigger:
   # Motion sensor activation
   - platform: state
-    entity_id: !input motion_sensors
+    entity_id: "{{ effective_motion_sensors }}"
     to: "on"
     id: motion_on
   
   # Motion sensor deactivation with timeout
   - platform: state
-    entity_id: !input motion_sensors
+    entity_id: "{{ effective_motion_sensors }}"
     to: "off"
     for:
       minutes: "{{ motion_timeout }}"
@@ -509,13 +623,13 @@ trigger:
   
   # Contact sensor activation
   - platform: state
-    entity_id: !input contact_sensors
+    entity_id: "{{ effective_contact_sensors }}"
     to: "on"
     id: contact_open
   
   # Contact sensor deactivation
   - platform: state
-    entity_id: !input contact_sensors
+    entity_id: "{{ effective_contact_sensors }}"
     to: "off"
     id: contact_closed
   
@@ -530,7 +644,7 @@ trigger:
   
   # State changes for button devices
   - platform: state
-    entity_id: !input button_devices
+    entity_id: "{{ effective_button_devices }}"
     id: button_state_change
   
   # Mode changes
@@ -540,7 +654,7 @@ trigger:
   
   # Manual light changes (for override detection)
   - platform: state
-    entity_id: !input lights_to_control
+    entity_id: "{{ effective_lights }}"
     id: manual_change
     context:
       user_id: null
@@ -582,7 +696,8 @@ action:
               seconds: "{{ activation_delay }}"
           
           - service: light.turn_on
-            target: !input lights_to_control
+            target:
+              entity_id: "{{ effective_lights }}"
             data:
               brightness_pct: "{{ target_brightness }}"
               color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
@@ -631,7 +746,8 @@ action:
               seconds: "{{ activation_delay }}"
           
           - service: light.turn_on
-            target: !input lights_to_control
+            target:
+              entity_id: "{{ effective_lights }}"
             data:
               brightness_pct: "{{ target_brightness }}"
               color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
@@ -658,7 +774,8 @@ action:
                   level: info
           
           - service: light.toggle
-            target: !input lights_to_control
+            target:
+              entity_id: "{{ effective_lights }}"
             data:
               brightness_pct: "{{ target_brightness }}"
               color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
@@ -697,7 +814,8 @@ action:
                   level: info
           
           - service: light.turn_off
-            target: !input lights_to_control
+            target:
+              entity_id: "{{ effective_lights }}"
             data:
               transition: "{{ fade_time }}"
           
@@ -728,7 +846,8 @@ action:
                   level: info
           
           - service: light.turn_on
-            target: !input lights_to_control
+            target:
+              entity_id: "{{ effective_lights }}"
             data:
               brightness_pct: "{{ target_brightness }}"
               color_temp_kelvin: "{{ target_color_temp if enable_color_temp else omit }}"
