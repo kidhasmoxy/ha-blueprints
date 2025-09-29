@@ -531,26 +531,24 @@ blueprint:
             - switch
             - fan
             - media_player
-    
     # ==========================================
     # ACTIVATE LIGHTS OPTIONS (CONDITIONS)
     # ==========================================
     disable_when_tv_on:
-{{ ... }}
       name: Disable When TV is On
       description: Don't activate if TV or media player is on
       default: false
       selector:
         boolean: {}
-    
+
     tv_media_player:
       name: TV/Media Player Entity
       description: Media player to check if TV is on
-      default: {}
+      default: null
       selector:
         entity:
           domain: media_player
-    
+
     disable_when_sleeping:
       name: Disable When Someone is Sleeping
       description: Don't activate if sleep mode is active
@@ -561,7 +559,7 @@ blueprint:
     sleep_sensor:
       name: Sleep Sensor/Switch
       description: Entity that indicates if someone is sleeping
-      default: {}
+      default: null
       selector:
         entity:
           domain: 
