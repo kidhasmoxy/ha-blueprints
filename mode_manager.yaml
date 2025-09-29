@@ -1,7 +1,7 @@
 blueprint:
   name: Mode Manager (Hubitat Style) v1.0.3
   description: |
-    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.2).
+    Comprehensive mode management system that replicates Hubitat Mode Manager functionality (v1.0.4).
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
@@ -464,7 +464,10 @@ trigger:
   
   - platform: sun
     event: sunrise
-    offset: "{{ (sunrise_offset | int) * 60 }}"
+    {% if sunrise_offset | int != 0 %}
+    offset:
+      minutes: !input sunrise_offset
+    {% endif %}
     id: "sunrise"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
@@ -476,7 +479,10 @@ trigger:
   
   - platform: sun
     event: sunset
-    offset: "{{ (sunset_offset | int) * 60 }}"
+    {% if sunset_offset | int != 0 %}
+    offset:
+      minutes: !input sunset_offset
+    {% endif %}
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
@@ -488,7 +494,10 @@ trigger:
   
   - platform: sun
     event: sunset
-    offset: "{{ (night_sunset_offset | int) * 60 }}"
+    {% if night_sunset_offset | int != 0 %}
+    offset:
+      minutes: !input night_sunset_offset
+    {% endif %}
     id: "night_sunset"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
