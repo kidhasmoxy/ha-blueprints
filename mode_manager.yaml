@@ -111,6 +111,7 @@ blueprint:
       selector:
         entity:
           domain: schedule
+          multiple: false
     
     # Evening Mode Settings
     evening_mode:
@@ -197,6 +198,7 @@ blueprint:
       selector:
         entity:
           domain: schedule
+          multiple: false
     
     # Night Mode Settings
     night_mode:
@@ -257,6 +259,7 @@ blueprint:
       selector:
         entity:
           domain: schedule
+          multiple: false
     
     skip_time_modes:
       name: Skip Time Changes for These Modes

@@ -229,22 +229,23 @@ Create schedule helpers in Home Assistant for maximum flexibility:
 
 #### Step 1: Create Schedule Helpers
 
-In Home Assistant, go to **Settings** → **Devices & Services** → **Helpers** and create:
+**Important**: You must create schedule helpers BEFORE configuring the blueprint, as the dropdown only shows existing schedules.
 
-```yaml
-# Example schedule configurations
-schedule.workday_schedule:
-  name: "Workday Schedule"
-  # Configure: Mon-Fri, all day
+In Home Assistant, go to **Settings** → **Devices & Services** → **Helpers** → **Create Helper** → **Schedule**:
 
-schedule.weekend_schedule:
-  name: "Weekend Schedule" 
-  # Configure: Sat-Sun, all day
+1. **Workday Schedule**:
+   - Name: "Workday Schedule"
+   - Configure: Monday through Friday, all day (00:00 to 23:59)
 
-schedule.vacation_schedule:
-  name: "Vacation Schedule"
-  # Configure: Specific vacation dates
-```
+2. **Weekend Schedule**:
+   - Name: "Weekend Schedule" 
+   - Configure: Saturday and Sunday, all day (00:00 to 23:59)
+
+3. **Vacation Schedule**:
+   - Name: "Vacation Schedule"
+   - Configure: Specific vacation dates as needed
+
+**Note**: Schedule helpers will appear as `schedule.workday_schedule`, `schedule.weekend_schedule`, etc.
 
 #### Step 2: Create Multiple Mode Manager Instances
 
@@ -306,18 +307,47 @@ input_boolean:
 **With Guests** (guest_mode = on):
 - Family leaves → Mode stays "Day/Evening/Night" (no away mode) ✅
 - Guests can enjoy normal lighting/climate
-- Family returns → Normal operation continues ✅
 
 **Manual Control**:
 - Turn on guest mode before leaving guests alone
 - Turn off guest mode when guests leave
-- Can be automated with guest room occupancy sensors
+- **Can be automated with guest room occupancy sensors**
+
+## Troubleshooting
+
+### Schedule Selector Shows No Options
+**Problem**: The schedule helper dropdown is empty or doesn't show your schedules.
+
+**Solution**: 
+1. Create schedule helpers FIRST in **Settings** → **Devices & Services** → **Helpers**
+2. Wait a few minutes for Home Assistant to recognize the new entities
+3. Refresh the blueprint configuration page
+4. The schedule helpers should now appear in the dropdown
+
+### Days of Week Not Working
+**Problem**: Mode changes aren't respecting the selected days.
+
+**Solution**:
+1. Ensure you've selected the correct **Schedule Type**:
+   - "All Days" = ignores day selection
+   - "Select Specific Days" = uses the day checkboxes
+   - "Use Schedule Helper" = uses the schedule entity
+2. Check that your day selections are saved (multiple selection is supported)
+3. Verify the current day matches your selection (check Home Assistant logs)
+
+### Schedule Helper Always Off
+**Problem**: Schedule helper exists but blueprint says it's always "off".
+
+**Solution**:
+1. Check the schedule helper configuration in **Settings** → **Devices & Services** → **Helpers**
+2. Ensure the schedule has time periods configured (not just days)
+3. Verify the schedule is enabled (toggle switch is on)
+4. Test the schedule manually to confirm it turns on/off as expected
 
 ### Alternative Presence Scenarios
 
 **Immediate Away Mode** (for security/energy savings):
 - Away Mode Trigger Logic: "When ANY selected person/device leaves"
-- Useful for immediately turning off lights/HVAC when first person leaves
 
 **Wait for Everyone Home**:
 - Return Trigger Logic: "When ALL selected people/devices are home"  
