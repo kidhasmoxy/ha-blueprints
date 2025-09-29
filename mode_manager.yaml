@@ -5,6 +5,7 @@ blueprint:
     Automatically changes modes based on time, presence, buttons, and switches using an input_select entity.
     Supports sunrise/sunset triggers, presence detection, button events, and switch states.
   domain: automation
+  min_version: 2024.6.0
   input:
     # ==========================================
     # BASIC CONFIGURATION
@@ -16,60 +17,56 @@ blueprint:
         entity:
           domain: input_select
     
-    # ==========================================
-    # TIME-BASED MODE CHANGES
-    # ==========================================
     time_modes_section:
       name: "⏰ Time-Based Mode Changes"
+      icon: mdi:clock-outline
       description: "Configure automatic mode changes based on time, sunrise/sunset"
       collapsed: false
-      selector:
-        addon: {}
+      input:
+        enable_time_modes:
+          name: Enable Time-Based Mode Changes
+          description: Enable automatic mode changes based on time
+          default: true
+          selector:
+            boolean: {}
+        
+        # Morning/Day Mode Settings
+        enable_morning_mode:
+          name: "Enable Day Mode"
+          description: "Enable automatic Day mode changes"
+          default: true
+          selector:
+            boolean: {}
+        
+        morning_mode:
+          name: "Day Mode"
+          description: "Enter the mode name from your input_select to set during daytime (e.g., 'Day', 'Morning')"
+          default: "Day"
+          selector:
+            text: {}
     
-    enable_time_modes:
-      name: Enable Time-Based Mode Changes
-      description: Enable automatic mode changes based on time
-      default: true
-      selector:
-        boolean: {}
+        morning_trigger_type:
+          name: "Day Mode Trigger"
+          description: "How to trigger Day mode"
+          default: "time"
+          selector:
+            select:
+              options:
+                - label: "Fixed Time"
+                  value: "time"
+                - label: "Sunrise (with optional offset)"
+                  value: "sunrise"
+                - label: "Earlier of Fixed Time or Sunrise"
+                  value: "earlier"
+                - label: "Later of Fixed Time or Sunrise"
+                  value: "later"
     
-    # Morning/Day Mode Settings
-    enable_morning_mode:
-      name: "Enable Day Mode"
-      description: "Enable automatic Day mode changes"
-      default: true
-      selector:
-        boolean: {}
-    
-    morning_mode:
-      name: "Day Mode"
-      description: "Enter the mode name from your input_select to set during daytime (e.g., 'Day', 'Morning')"
-      default: "Day"
-      selector:
-        text: {}
-    
-    morning_trigger_type:
-      name: "Day Mode Trigger"
-      description: "How to trigger Day mode"
-      default: "time"
-      selector:
-        select:
-          options:
-            - label: "Fixed Time"
-              value: "time"
-            - label: "Sunrise (with optional offset)"
-              value: "sunrise"
-            - label: "Earlier of Fixed Time or Sunrise"
-              value: "earlier"
-            - label: "Later of Fixed Time or Sunrise"
-              value: "later"
-    
-    morning_time:
-      name: "Day Mode - Fixed Time"
-      description: "Fixed time to switch to Day mode"
-      default: "07:00:00"
-      selector:
-        time: {}
+        morning_time:
+          name: "Day Mode - Fixed Time"
+          description: "Fixed time to switch to Day mode"
+          default: "07:00:00"
+          selector:
+            time: {}
     
     sunrise_offset:
       name: "Day Mode - Sunrise Offset (minutes)"
@@ -303,22 +300,18 @@ blueprint:
       selector:
         boolean: {}
     
-    # ==========================================
-    # PRESENCE-BASED MODE CHANGES
-    # ==========================================
     presence_section:
       name: "👥 Presence-Based Mode Changes"
+      icon: mdi:account-multiple
       description: "Configure automatic away/home mode changes based on presence detection"
       collapsed: true
-      selector:
-        addon: {}
-    
-    enable_presence_modes:
-      name: Enable Presence-Based Mode Changes
-      description: Enable automatic mode changes based on presence
-      default: false
-      selector:
-        boolean: {}
+      input:
+        enable_presence_modes:
+          name: Enable Presence-Based Mode Changes
+          description: Enable automatic mode changes based on presence
+          default: false
+          selector:
+            boolean: {}
     
     presence_trackers:
       name: Device Trackers / Person Entities
@@ -381,15 +374,8 @@ blueprint:
         text: {}
     
     # ==========================================
-    # GUEST MODE
+    # 🏠 GUEST MODE
     # ==========================================
-    guest_section:
-      name: "🏠 Guest Mode"
-      description: "Prevent away mode changes when guests are present"
-      collapsed: true
-      selector:
-        addon: {}
-    
     guest_mode_sensor:
       name: Guest Mode Sensor (Optional)
       description: Binary sensor that indicates when guests are present (prevents away mode when 'on'). Leave empty to disable guest mode.
@@ -401,67 +387,59 @@ blueprint:
             - input_boolean
             - switch
     
-    # ==========================================
-    # BUTTON-BASED MODE CHANGES
-    # ==========================================
     button_section:
       name: "🔘 Button-Based Mode Changes"
+      icon: mdi:gesture-tap-button
       description: "Configure mode changes triggered by button events"
       collapsed: true
-      selector:
-        addon: {}
+      input:
+        enable_button_modes:
+          name: Enable Button-Based Mode Changes
+          description: Enable mode changes triggered by button events
+          default: false
+          selector:
+            boolean: {}
     
-    enable_button_modes:
-      name: Enable Button-Based Mode Changes
-      description: Enable mode changes triggered by button events
-      default: false
-      selector:
-        boolean: {}
+        button_day_mode:
+          name: Day Mode Button Event
+          description: Button event to trigger Day mode (e.g., "button_1_single", "1002"). Leave empty to disable.
+          default: ""
+          selector:
+            text: {}
     
-    button_day_mode:
-      name: Day Mode Button Event
-      description: Button event to trigger Day mode (e.g., "button_1_single", "1002"). Leave empty to disable.
-      default: ""
-      selector:
-        text: {}
+        button_evening_mode:
+          name: Evening Mode Button Event
+          description: Button event to trigger Evening mode (e.g., "button_2_single", "1004"). Leave empty to disable.
+          default: ""
+          selector:
+            text: {}
     
-    button_evening_mode:
-      name: Evening Mode Button Event
-      description: Button event to trigger Evening mode (e.g., "button_2_single", "1004"). Leave empty to disable.
-      default: ""
-      selector:
-        text: {}
+        button_night_mode:
+          name: Night Mode Button Event
+          description: Button event to trigger Night mode (e.g., "button_3_single", "1006"). Leave empty to disable.
+          default: ""
+          selector:
+            text: {}
     
-    button_night_mode:
-      name: Night Mode Button Event
-      description: Button event to trigger Night mode (e.g., "button_3_single", "1006"). Leave empty to disable.
-      default: ""
-      selector:
-        text: {}
+        button_away_mode:
+          name: Away Mode Button Event
+          description: Button event to trigger Away mode (e.g., "button_4_single", "1008"). Leave empty to disable.
+          default: ""
+          selector:
+            text: {}
     
-    button_away_mode:
-      name: Away Mode Button Event
-      description: Button event to trigger Away mode (e.g., "button_4_single", "1008"). Leave empty to disable.
-      default: ""
-      selector:
-        text: {}
-    
-    # ==========================================
-    # SWITCH-BASED MODE CHANGES
-    # ==========================================
     switch_section:
       name: "🔌 Switch-Based Mode Changes"
+      icon: mdi:toggle-switch
       description: "Configure mode changes triggered by switch states"
       collapsed: true
-      selector:
-        addon: {}
-    
-    enable_switch_modes:
-      name: Enable Switch-Based Mode Changes
-      description: Enable mode changes triggered by switch states
-      default: false
-      selector:
-        boolean: {}
+      input:
+        enable_switch_modes:
+          name: Enable Switch-Based Mode Changes
+          description: Enable mode changes triggered by switch states
+          default: false
+          selector:
+            boolean: {}
     
     switch_devices:
       name: Switch Devices
