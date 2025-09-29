@@ -593,15 +593,13 @@ trigger:
   
   # Presence triggers
   - platform: state
-    entity_id: "{{ presence_trackers if presence_trackers else [] }}"
-    to: 
-      - "not_home"
-      - "away"
+    entity_id: !input presence_trackers
+    from: "home"
     id: "presence_away"
     enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
   
   - platform: state
-    entity_id: "{{ presence_trackers if presence_trackers else [] }}"
+    entity_id: !input presence_trackers
     to: "home"
     id: "presence_home"
     enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
@@ -798,7 +796,7 @@ action:
                 {% if logic == 'all_away' %}
                   {{ expand(trackers) | selectattr('state', 'eq', 'home') | list | length == 0 }}
                 {% elif logic == 'any_away' %}
-                  {{ expand(trackers) | selectattr('state', 'eq', 'not_home') | list | length > 0 }}
+                  {{ expand(trackers) | selectattr('state', 'ne', 'home') | list | length > 0 }}
                 {% else %}
                   false
                 {% endif %}
