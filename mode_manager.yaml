@@ -69,237 +69,237 @@ blueprint:
           selector:
             time: {}
     
-    sunrise_offset:
-      name: "Day Mode - Sunrise Offset (minutes)"
-      description: "Minutes before (-) or after (+) sunrise"
-      default: 0
-      selector:
-        number:
-          min: -120
-          max: 120
-          step: 1
+        sunrise_offset:
+          name: "Day Mode - Sunrise Offset (minutes)"
+          description: "Minutes before (-) or after (+) sunrise"
+          default: 0
+          selector:
+            number:
+              min: -120
+              max: 120
+              step: 1
     
-    morning_schedule_type:
-      name: "Day Mode - Schedule Type"
-      description: "Choose how to control when Day mode is triggered"
-      default: "all_days"
-      selector:
-        select:
-          options:
-            - label: "All Days"
-              value: "all_days"
-            - label: "Select Specific Days"
-              value: "specific_days"
-            - label: "Use Schedule Helper"
-              value: "schedule_helper"
+        morning_schedule_type:
+          name: "Day Mode - Schedule Type"
+          description: "Choose how to control when Day mode is triggered"
+          default: "all_days"
+          selector:
+            select:
+              options:
+                - label: "All Days"
+                  value: "all_days"
+                - label: "Select Specific Days"
+                  value: "specific_days"
+                - label: "Use Schedule Helper"
+                  value: "schedule_helper"
     
-    morning_days:
-      name: "Day Mode - Days of Week"
-      description: "Select days when Day mode should be triggered (only used if 'Select Specific Days' chosen above)"
-      default: []
-      selector:
-        select:
-          options:
-            - label: "Monday"
-              value: "monday"
-            - label: "Tuesday"
-              value: "tuesday"
-            - label: "Wednesday"
-              value: "wednesday"
-            - label: "Thursday"
-              value: "thursday"
-            - label: "Friday"
-              value: "friday"
-            - label: "Saturday"
-              value: "saturday"
-            - label: "Sunday"
-              value: "sunday"
-          multiple: true
+        morning_days:
+          name: "Day Mode - Days of Week"
+          description: "Select days when Day mode should be triggered (only used if 'Select Specific Days' chosen above)"
+          default: []
+          selector:
+            select:
+              options:
+                - label: "Monday"
+                  value: "monday"
+                - label: "Tuesday"
+                  value: "tuesday"
+                - label: "Wednesday"
+                  value: "wednesday"
+                - label: "Thursday"
+                  value: "thursday"
+                - label: "Friday"
+                  value: "friday"
+                - label: "Saturday"
+                  value: "saturday"
+                - label: "Sunday"
+                  value: "sunday"
+              multiple: true
     
-    morning_schedule:
-      name: "Day Mode - Schedule Helper"
-      description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
-      default: ""
-      selector:
-        entity:
-          domain: schedule
-          multiple: false
+        morning_schedule:
+          name: "Day Mode - Schedule Helper"
+          description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
+          default: ""
+          selector:
+            entity:
+              domain: schedule
+              multiple: false
     
-    # Evening Mode Settings
-    enable_evening_mode:
-      name: "Enable Evening Mode"
-      description: "Enable automatic Evening mode changes"
-      default: true
-      selector:
-        boolean: {}
+        # Evening Mode Settings
+        enable_evening_mode:
+          name: "Enable Evening Mode"
+          description: "Enable automatic Evening mode changes"
+          default: true
+          selector:
+            boolean: {}
     
-    evening_mode:
-      name: "Evening Mode"
-      description: "Enter the mode name from your input_select to set during evening (e.g., 'Evening', 'Dusk')"
-      default: "Evening"
-      selector:
-        text: {}
+        evening_mode:
+          name: "Evening Mode"
+          description: "Enter the mode name from your input_select to set during evening (e.g., 'Evening', 'Dusk')"
+          default: "Evening"
+          selector:
+            text: {}
     
-    evening_trigger_type:
-      name: "Evening Mode Trigger"
-      description: "How to trigger Evening mode"
-      default: "time"
-      selector:
-        select:
-          options:
-            - label: "Fixed Time"
-              value: "time"
-            - label: "Sunset (with optional offset)"
-              value: "sunset"
-            - label: "Earlier of Fixed Time or Sunset"
-              value: "earlier"
-            - label: "Later of Fixed Time or Sunset"
-              value: "later"
+        evening_trigger_type:
+          name: "Evening Mode Trigger"
+          description: "How to trigger Evening mode"
+          default: "time"
+          selector:
+            select:
+              options:
+                - label: "Fixed Time"
+                  value: "time"
+                - label: "Sunset (with optional offset)"
+                  value: "sunset"
+                - label: "Earlier of Fixed Time or Sunset"
+                  value: "earlier"
+                - label: "Later of Fixed Time or Sunset"
+                  value: "later"
     
-    evening_time:
-      name: "Evening Mode - Fixed Time"
-      description: "Fixed time to switch to Evening mode"
-      default: "18:00:00"
-      selector:
-        time: {}
+        evening_time:
+          name: "Evening Mode - Fixed Time"
+          description: "Fixed time to switch to Evening mode"
+          default: "18:00:00"
+          selector:
+            time: {}
     
-    sunset_offset:
-      name: "Evening Mode - Sunset Offset (minutes)"
-      description: "Minutes before (-) or after (+) sunset"
-      default: 0
-      selector:
-        number:
-          min: -120
-          max: 120
-          step: 1
+        sunset_offset:
+          name: "Evening Mode - Sunset Offset (minutes)"
+          description: "Minutes before (-) or after (+) sunset"
+          default: 0
+          selector:
+            number:
+              min: -120
+              max: 120
+              step: 1
     
-    evening_schedule_type:
-      name: "Evening Mode - Schedule Type"
-      description: "Choose how to control when Evening mode is triggered"
-      default: "all_days"
-      selector:
-        select:
-          options:
-            - label: "All Days"
-              value: "all_days"
-            - label: "Select Specific Days"
-              value: "specific_days"
-            - label: "Use Schedule Helper"
-              value: "schedule_helper"
+        evening_schedule_type:
+          name: "Evening Mode - Schedule Type"
+          description: "Choose how to control when Evening mode is triggered"
+          default: "all_days"
+          selector:
+            select:
+              options:
+                - label: "All Days"
+                  value: "all_days"
+                - label: "Select Specific Days"
+                  value: "specific_days"
+                - label: "Use Schedule Helper"
+                  value: "schedule_helper"
     
-    evening_days:
-      name: "Evening Mode - Days of Week"
-      description: "Select days when Evening mode should be triggered (only used if 'Select Specific Days' chosen above)"
-      default: []
-      selector:
-        select:
-          options:
-            - label: "Monday"
-              value: "monday"
-            - label: "Tuesday"
-              value: "tuesday"
-            - label: "Wednesday"
-              value: "wednesday"
-            - label: "Thursday"
-              value: "thursday"
-            - label: "Friday"
-              value: "friday"
-            - label: "Saturday"
-              value: "saturday"
-            - label: "Sunday"
-              value: "sunday"
-          multiple: true
+        evening_days:
+          name: "Evening Mode - Days of Week"
+          description: "Select days when Evening mode should be triggered (only used if 'Select Specific Days' chosen above)"
+          default: []
+          selector:
+            select:
+              options:
+                - label: "Monday"
+                  value: "monday"
+                - label: "Tuesday"
+                  value: "tuesday"
+                - label: "Wednesday"
+                  value: "wednesday"
+                - label: "Thursday"
+                  value: "thursday"
+                - label: "Friday"
+                  value: "friday"
+                - label: "Saturday"
+                  value: "saturday"
+                - label: "Sunday"
+                  value: "sunday"
+              multiple: true
     
-    evening_schedule:
-      name: "Evening Mode - Schedule Helper"
-      description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
-      default: ""
-      selector:
-        entity:
-          domain: schedule
-          multiple: false
+        evening_schedule:
+          name: "Evening Mode - Schedule Helper"
+          description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
+          default: ""
+          selector:
+            entity:
+              domain: schedule
+              multiple: false
     
-    # Night Mode Settings
-    enable_night_mode:
-      name: "Enable Night Mode"
-      description: "Enable automatic Night mode changes"
-      default: true
-      selector:
-        boolean: {}
+        # Night Mode Settings
+        enable_night_mode:
+          name: "Enable Night Mode"
+          description: "Enable automatic Night mode changes"
+          default: true
+          selector:
+            boolean: {}
     
-    night_mode:
-      name: "Night Mode"
-      description: "Enter the mode name from your input_select to set at night (e.g., 'Night', 'Sleep')"
-      default: "Night"
-      selector:
-        text: {}
+        night_mode:
+          name: "Night Mode"
+          description: "Enter the mode name from your input_select to set at night (e.g., 'Night', 'Sleep')"
+          default: "Night"
+          selector:
+            text: {}
     
-    night_time:
-      name: "Night Mode - Fixed Time"
-      description: "Fixed time to switch to Night mode"
-      default: "22:00:00"
-      selector:
-        time: {}
+        night_time:
+          name: "Night Mode - Fixed Time"
+          description: "Fixed time to switch to Night mode"
+          default: "22:00:00"
+          selector:
+            time: {}
     
-    night_schedule_type:
-      name: "Night Mode - Schedule Type"
-      description: "Choose how to control when Night mode is triggered"
-      default: "all_days"
-      selector:
-        select:
-          options:
-            - label: "All Days"
-              value: "all_days"
-            - label: "Select Specific Days"
-              value: "specific_days"
-            - label: "Use Schedule Helper"
-              value: "schedule_helper"
+        night_schedule_type:
+          name: "Night Mode - Schedule Type"
+          description: "Choose how to control when Night mode is triggered"
+          default: "all_days"
+          selector:
+            select:
+              options:
+                - label: "All Days"
+                  value: "all_days"
+                - label: "Select Specific Days"
+                  value: "specific_days"
+                - label: "Use Schedule Helper"
+                  value: "schedule_helper"
     
-    night_days:
-      name: "Night Mode - Days of Week"
-      description: "Select days when Night mode should be triggered (only used if 'Select Specific Days' chosen above)"
-      default: []
-      selector:
-        select:
-          options:
-            - label: "Monday"
-              value: "monday"
-            - label: "Tuesday"
-              value: "tuesday"
-            - label: "Wednesday"
-              value: "wednesday"
-            - label: "Thursday"
-              value: "thursday"
-            - label: "Friday"
-              value: "friday"
-            - label: "Saturday"
-              value: "saturday"
-            - label: "Sunday"
-              value: "sunday"
-          multiple: true
+        night_days:
+          name: "Night Mode - Days of Week"
+          description: "Select days when Night mode should be triggered (only used if 'Select Specific Days' chosen above)"
+          default: []
+          selector:
+            select:
+              options:
+                - label: "Monday"
+                  value: "monday"
+                - label: "Tuesday"
+                  value: "tuesday"
+                - label: "Wednesday"
+                  value: "wednesday"
+                - label: "Thursday"
+                  value: "thursday"
+                - label: "Friday"
+                  value: "friday"
+                - label: "Saturday"
+                  value: "saturday"
+                - label: "Sunday"
+                  value: "sunday"
+              multiple: true
     
-    night_schedule:
-      name: "Night Mode - Schedule Helper"
-      description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
-      default: ""
-      selector:
-        entity:
-          domain: schedule
-          multiple: false
+        night_schedule:
+          name: "Night Mode - Schedule Helper"
+          description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
+          default: ""
+          selector:
+            entity:
+              domain: schedule
+              multiple: false
     
-    skip_time_modes:
-      name: Skip Time Changes for These Modes
-      description: Comma-separated list of modes that should not be changed by time-based triggers (e.g., "Away,Vacation,Party")
-      default: "Away"
-      selector:
-        text: {}
+        skip_time_modes:
+          name: Skip Time Changes for These Modes
+          description: Comma-separated list of modes that should not be changed by time-based triggers (e.g., "Away,Vacation,Party")
+          default: "Away"
+          selector:
+            text: {}
     
-    set_mode_on_startup:
-      name: Set Mode on System Startup
-      description: Set mode based on time table when Home Assistant starts
-      default: false
-      selector:
-        boolean: {}
+        set_mode_on_startup:
+          name: Set Mode on System Startup
+          description: Set mode based on time table when Home Assistant starts
+          default: false
+          selector:
+            boolean: {}
     
     presence_section:
       name: "👥 Presence-Based Mode Changes"
@@ -314,65 +314,65 @@ blueprint:
           selector:
             boolean: {}
     
-    presence_trackers:
-      name: Device Trackers / Person Entities
-      description: Select device tracker or person entities for presence detection
-      default: []
-      selector:
-        target:
-          entity:
-            - domain: person
-            - domain: device_tracker
+        presence_trackers:
+          name: Device Trackers / Person Entities
+          description: Select device tracker or person entities for presence detection
+          default: []
+          selector:
+            target:
+              entity:
+                - domain: person
+                - domain: device_tracker
     
-    away_trigger_logic:
-      name: Away Mode Trigger Logic
-      description: When to trigger Away mode
-      default: "all_away"
-      selector:
-        select:
-          options:
-            - label: "When ALL selected people/devices are away"
-              value: "all_away"
-            - label: "When ANY selected person/device leaves"
-              value: "any_away"
+        away_trigger_logic:
+          name: Away Mode Trigger Logic
+          description: When to trigger Away mode
+          default: "all_away"
+          selector:
+            select:
+              options:
+                - label: "When ALL selected people/devices are away"
+                  value: "all_away"
+                - label: "When ANY selected person/device leaves"
+                  value: "any_away"
     
-    away_mode:
-      name: Away Mode
-      description: Enter the mode name from your input_select to set when away condition is met (e.g., 'Away', 'Vacation')
-      default: "Away"
-      selector:
-        text: {}
+        away_mode:
+          name: Away Mode
+          description: Enter the mode name from your input_select to set when away condition is met (e.g., 'Away', 'Vacation')
+          default: "Away"
+          selector:
+            text: {}
     
-    return_trigger_logic:
-      name: Return Trigger Logic
-      description: When to trigger return from Away mode
-      default: "any_home"
-      selector:
-        select:
-          options:
-            - label: "When ANY selected person/device returns home"
-              value: "any_home"
-            - label: "When ALL selected people/devices are home"
-              value: "all_home"
+        return_trigger_logic:
+          name: Return Trigger Logic
+          description: When to trigger return from Away mode
+          default: "any_home"
+          selector:
+            select:
+              options:
+                - label: "When ANY selected person/device returns home"
+                  value: "any_home"
+                - label: "When ALL selected people/devices are home"
+                  value: "all_home"
     
-    return_from_away_mode:
-      name: Return from Away Behavior
-      description: How to handle returning from away mode
-      default: "time_based"
-      selector:
-        select:
-          options:
-            - label: "Use time-based mode (recommended)"
-              value: "time_based"
-            - label: "Use specific mode"
-              value: "specific"
+        return_from_away_mode:
+          name: Return from Away Behavior
+          description: How to handle returning from away mode
+          default: "time_based"
+          selector:
+            select:
+              options:
+                - label: "Use time-based mode (recommended)"
+                  value: "time_based"
+                - label: "Use specific mode"
+                  value: "specific"
     
-    return_mode:
-      name: Return Mode
-      description: Enter the mode name from your input_select to set when returning (if not using time-based, e.g., 'Day')
-      default: "Day"
-      selector:
-        text: {}
+        return_mode:
+          name: Return Mode
+          description: Enter the mode name from your input_select to set when returning (if not using time-based, e.g., 'Day')
+          default: "Day"
+          selector:
+            text: {}
     
     # ==========================================
     # 🏠 GUEST MODE
@@ -442,78 +442,78 @@ blueprint:
           selector:
             boolean: {}
     
-    switch_devices:
-      name: Switch Devices
-      description: Select switch entities for mode control
-      default: {}
-      selector:
-        entity:
-          domain: 
-            - switch
-            - light
-            - input_boolean
-          multiple: true
+        switch_devices:
+          name: Switch Devices
+          description: Select switch entities for mode control
+          default: {}
+          selector:
+            entity:
+              domain: 
+                - switch
+                - light
+                - input_boolean
+              multiple: true
     
-    # Switch Mode Mappings
-    switch_mode_1:
-      name: Switch Mode 1
-      description: Enter mode name from your input_select for first switch trigger (leave empty to disable)
-      default: ""
-      selector:
-        text: {}
+        # Switch Mode Mappings
+        switch_mode_1:
+          name: Switch Mode 1
+          description: Enter mode name from your input_select for first switch trigger (leave empty to disable)
+          default: ""
+          selector:
+            text: {}
     
-    switch_entity_1:
-      name: Switch Entity 1
-      description: Switch entity for Mode 1
-      default: ""
-      selector:
-        entity:
-          domain: 
-            - switch
-            - light
-            - input_boolean
+        switch_entity_1:
+          name: Switch Entity 1
+          description: Switch entity for Mode 1
+          default: ""
+          selector:
+            entity:
+              domain: 
+                - switch
+                - light
+                - input_boolean
     
-    switch_state_1:
-      name: Switch State 1
-      description: Switch state that triggers Mode 1
-      default: "on"
-      selector:
-        select:
-          options:
-            - label: "On"
-              value: "on"
-            - label: "Off"
-              value: "off"
+        switch_state_1:
+          name: Switch State 1
+          description: Switch state that triggers Mode 1
+          default: "on"
+          selector:
+            select:
+              options:
+                - label: "On"
+                  value: "on"
+                - label: "Off"
+                  value: "off"
     
-    switch_mode_2:
-      name: Switch Mode 2
-      description: Enter mode name from your input_select for second switch trigger (leave empty to disable)
-      default: ""
-      selector:
-        text: {}
+        switch_mode_2:
+          name: Switch Mode 2
+          description: Enter mode name from your input_select for second switch trigger (leave empty to disable)
+          default: ""
+          selector:
+            text: {}
     
-    switch_entity_2:
-      name: Switch Entity 2
-      description: Switch entity for Mode 2
-      default: ""
-      selector:
-        entity:
-          domain: 
-            - switch
-            - light
-            - input_boolean
+        switch_entity_2:
+          name: Switch Entity 2
+          description: Switch entity for Mode 2
+          default: ""
+          selector:
+            entity:
+              domain: 
+                - switch
+                - light
+                - input_boolean
     
-    switch_state_2:
-      name: Switch State 2
-      description: Switch state that triggers Mode 2
-      default: "off"
-      selector:
-        select:
-          options:
-            - label: "On"
-              value: "on"
-            - label: "Off"
-              value: "off"
+        switch_state_2:
+          name: Switch State 2
+          description: Switch state that triggers Mode 2
+          default: "off"
+          selector:
+            select:
+              options:
+                - label: "On"
+                  value: "on"
+                - label: "Off"
+                  value: "off"
 
 variables:
   mode_entity: !input mode_selector
