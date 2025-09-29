@@ -67,9 +67,23 @@ blueprint:
           max: 120
           step: 1
     
+    morning_schedule_type:
+      name: "Day Mode - Schedule Type"
+      description: "Choose how to control when Day mode is triggered"
+      default: "all_days"
+      selector:
+        select:
+          options:
+            - label: "All Days"
+              value: "all_days"
+            - label: "Select Specific Days"
+              value: "specific_days"
+            - label: "Use Schedule Helper"
+              value: "schedule_helper"
+    
     morning_days:
       name: "Day Mode - Days of Week"
-      description: "Select days when Day mode should be triggered (leave empty for all days)"
+      description: "Select days when Day mode should be triggered (only used if 'Select Specific Days' chosen above)"
       default: []
       selector:
         select:
@@ -89,6 +103,14 @@ blueprint:
             - label: "Sunday"
               value: "sunday"
           multiple: true
+    
+    morning_schedule:
+      name: "Day Mode - Schedule Helper"
+      description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
+      default: ""
+      selector:
+        entity:
+          domain: schedule
     
     # Evening Mode Settings
     evening_mode:
@@ -131,9 +153,23 @@ blueprint:
           max: 120
           step: 1
     
+    evening_schedule_type:
+      name: "Evening Mode - Schedule Type"
+      description: "Choose how to control when Evening mode is triggered"
+      default: "all_days"
+      selector:
+        select:
+          options:
+            - label: "All Days"
+              value: "all_days"
+            - label: "Select Specific Days"
+              value: "specific_days"
+            - label: "Use Schedule Helper"
+              value: "schedule_helper"
+    
     evening_days:
       name: "Evening Mode - Days of Week"
-      description: "Select days when Evening mode should be triggered (leave empty for all days)"
+      description: "Select days when Evening mode should be triggered (only used if 'Select Specific Days' chosen above)"
       default: []
       selector:
         select:
@@ -153,6 +189,14 @@ blueprint:
             - label: "Sunday"
               value: "sunday"
           multiple: true
+    
+    evening_schedule:
+      name: "Evening Mode - Schedule Helper"
+      description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
+      default: ""
+      selector:
+        entity:
+          domain: schedule
     
     # Night Mode Settings
     night_mode:
@@ -169,9 +213,23 @@ blueprint:
       selector:
         time: {}
     
+    night_schedule_type:
+      name: "Night Mode - Schedule Type"
+      description: "Choose how to control when Night mode is triggered"
+      default: "all_days"
+      selector:
+        select:
+          options:
+            - label: "All Days"
+              value: "all_days"
+            - label: "Select Specific Days"
+              value: "specific_days"
+            - label: "Use Schedule Helper"
+              value: "schedule_helper"
+    
     night_days:
       name: "Night Mode - Days of Week"
-      description: "Select days when Night mode should be triggered (leave empty for all days)"
+      description: "Select days when Night mode should be triggered (only used if 'Select Specific Days' chosen above)"
       default: []
       selector:
         select:
@@ -191,6 +249,14 @@ blueprint:
             - label: "Sunday"
               value: "sunday"
           multiple: true
+    
+    night_schedule:
+      name: "Night Mode - Schedule Helper"
+      description: "Select a schedule helper entity (only used if 'Use Schedule Helper' chosen above)"
+      default: ""
+      selector:
+        entity:
+          domain: schedule
     
     skip_time_modes:
       name: Skip Time Changes for These Modes
@@ -275,6 +341,27 @@ blueprint:
       default: "Day"
       selector:
         text: {}
+    
+    # ==========================================
+    # GUEST MODE
+    # ==========================================
+    enable_guest_mode:
+      name: Enable Guest Mode
+      description: Enable guest mode to prevent away mode changes when guests are present
+      default: false
+      selector:
+        boolean: {}
+    
+    guest_mode_sensor:
+      name: Guest Mode Sensor
+      description: Binary sensor that indicates when guests are present (prevents away mode when 'on')
+      default: ""
+      selector:
+        entity:
+          domain: 
+            - binary_sensor
+            - input_boolean
+            - switch
     
     # ==========================================
     # BUTTON-BASED MODE CHANGES
@@ -453,10 +540,18 @@ variables:
   evening_mode: !input evening_mode
   night_mode: !input night_mode
   return_mode: !input return_mode
+  morning_schedule_type: !input morning_schedule_type
   morning_days: !input morning_days
+  morning_schedule: !input morning_schedule
+  evening_schedule_type: !input evening_schedule_type
   evening_days: !input evening_days
+  evening_schedule: !input evening_schedule
+  night_schedule_type: !input night_schedule_type
   night_days: !input night_days
+  night_schedule: !input night_schedule
   current_weekday: "{{ now().strftime('%A').lower() }}"
+  enable_guest_mode: !input enable_guest_mode
+  guest_mode_sensor: !input guest_mode_sensor
   # Button mappings
   button_mappings:
     - mode: !input button_mode_1
@@ -564,9 +659,19 @@ action:
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
-              {% set days = morning_days %}
-              {% set weekday = current_weekday %}
-              {{ days | length == 0 or weekday in days }}
+              {% set schedule_type = morning_schedule_type %}
+              {% if schedule_type == 'all_days' %}
+                true
+              {% elif schedule_type == 'specific_days' %}
+                {% set days = morning_days %}
+                {% set weekday = current_weekday %}
+                {{ days | length == 0 or weekday in days }}
+              {% elif schedule_type == 'schedule_helper' %}
+                {% set schedule_entity = morning_schedule %}
+                {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
           - condition: template
             value_template: >
               {% set trigger_type = morning_trigger_type %}
@@ -611,9 +716,19 @@ action:
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
-              {% set days = evening_days %}
-              {% set weekday = current_weekday %}
-              {{ days | length == 0 or weekday in days }}
+              {% set schedule_type = evening_schedule_type %}
+              {% if schedule_type == 'all_days' %}
+                true
+              {% elif schedule_type == 'specific_days' %}
+                {% set days = evening_days %}
+                {% set weekday = current_weekday %}
+                {{ days | length == 0 or weekday in days }}
+              {% elif schedule_type == 'schedule_helper' %}
+                {% set schedule_entity = evening_schedule %}
+                {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
           - condition: template
             value_template: >
               {% set trigger_type = evening_trigger_type %}
@@ -656,9 +771,19 @@ action:
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
-              {% set days = night_days %}
-              {% set weekday = current_weekday %}
-              {{ days | length == 0 or weekday in days }}
+              {% set schedule_type = night_schedule_type %}
+              {% if schedule_type == 'all_days' %}
+                true
+              {% elif schedule_type == 'specific_days' %}
+                {% set days = night_days %}
+                {% set weekday = current_weekday %}
+                {{ days | length == 0 or weekday in days }}
+              {% elif schedule_type == 'schedule_helper' %}
+                {% set schedule_entity = night_schedule %}
+                {{ schedule_entity == '' or is_state(schedule_entity, 'on') }}
+              {% else %}
+                true
+              {% endif %}
         sequence:
           - service: input_select.select_option
             target:
@@ -672,16 +797,27 @@ action:
             id: "presence_away"
           - condition: template
             value_template: >
-              {% set tracker_entities = presence_trackers.entity_id | default([]) %}
+              {% set trackers = presence_trackers %}
               {% set logic = away_trigger_logic %}
-              {% if tracker_entities | length == 0 %}
-                false
-              {% elif logic == 'all_away' %}
-                {{ expand(tracker_entities) | selectattr('state', 'in', ['home']) | list | length == 0 }}
-              {% elif logic == 'any_away' %}
-                {{ expand(tracker_entities) | selectattr('state', 'in', ['not_home', 'away']) | list | length > 0 }}
+              {% if trackers %}
+                {% if logic == 'all_away' %}
+                  {{ expand(trackers) | selectattr('state', 'eq', 'home') | list | length == 0 }}
+                {% elif logic == 'any_away' %}
+                  {{ expand(trackers) | selectattr('state', 'eq', 'not_home') | list | length > 0 }}
+                {% else %}
+                  false
+                {% endif %}
               {% else %}
                 false
+              {% endif %}
+          - condition: template
+            value_template: >
+              {% set guest_enabled = enable_guest_mode %}
+              {% set guest_sensor = guest_mode_sensor %}
+              {% if guest_enabled and guest_sensor != '' %}
+                {{ not is_state(guest_sensor, 'on') }}
+              {% else %}
+                true
               {% endif %}
         sequence:
           - service: input_select.select_option

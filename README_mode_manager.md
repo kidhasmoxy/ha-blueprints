@@ -74,7 +74,12 @@ Enable automatic mode changes based on time with clear trigger options:
   - "Later of Fixed Time or Sunrise" - Trigger at whichever comes last
 - **Day Mode - Fixed Time**: Specific time to trigger Day mode
 - **Day Mode - Sunrise Offset**: Minutes before (-) or after (+) sunrise
-- **Day Mode - Days of Week**: Select specific days for Day mode (leave empty for all days)
+- **Day Mode - Schedule Type**: Choose how to control when Day mode is triggered:
+  - "All Days" - Trigger every day
+  - "Select Specific Days" - Choose specific days of the week
+  - "Use Schedule Helper" - Use a Home Assistant schedule entity
+- **Day Mode - Days of Week**: Select specific days (only used if "Select Specific Days" chosen)
+- **Day Mode - Schedule Helper**: Select a schedule entity (only used if "Use Schedule Helper" chosen)
 
 #### Evening Mode Configuration  
 - **Evening Mode**: Enter the exact mode name from your input_select for evening (e.g., "Evening", "Dusk")
@@ -85,12 +90,22 @@ Enable automatic mode changes based on time with clear trigger options:
   - "Later of Fixed Time or Sunset" - Trigger at whichever comes last
 - **Evening Mode - Fixed Time**: Specific time to trigger Evening mode
 - **Evening Mode - Sunset Offset**: Minutes before (-) or after (+) sunset
-- **Evening Mode - Days of Week**: Select specific days for Evening mode (leave empty for all days)
+- **Evening Mode - Schedule Type**: Choose how to control when Evening mode is triggered:
+  - "All Days" - Trigger every day
+  - "Select Specific Days" - Choose specific days of the week
+  - "Use Schedule Helper" - Use a Home Assistant schedule entity
+- **Evening Mode - Days of Week**: Select specific days (only used if "Select Specific Days" chosen)
+- **Evening Mode - Schedule Helper**: Select a schedule entity (only used if "Use Schedule Helper" chosen)
 
 #### Night Mode Configuration
 - **Night Mode**: Enter the exact mode name from your input_select for night (e.g., "Night", "Sleep")
 - **Night Mode - Fixed Time**: Specific time to trigger Night mode (always uses fixed time)
-- **Night Mode - Days of Week**: Select specific days for Night mode (leave empty for all days)
+- **Night Mode - Schedule Type**: Choose how to control when Night mode is triggered:
+  - "All Days" - Trigger every day
+  - "Select Specific Days" - Choose specific days of the week
+  - "Use Schedule Helper" - Use a Home Assistant schedule entity
+- **Night Mode - Days of Week**: Select specific days (only used if "Select Specific Days" chosen)
+- **Night Mode - Schedule Helper**: Select a schedule entity (only used if "Use Schedule Helper" chosen)
 
 #### Additional Settings
 - **Skip Time Changes for These Modes**: Comma-separated list of modes that should not be changed by time triggers (e.g., "Away,Vacation,Party")
@@ -111,6 +126,16 @@ Configure mode changes based on presence with flexible logic:
   - "When ALL selected people/devices are home" (wait for everyone)
 - **Return from Away Behavior**: Choose between time-based mode or specific mode when returning
 - **Return Mode**: Enter the exact mode name to set when returning (if not using time-based, e.g., "Day")
+
+### Guest Mode
+
+Prevent automatic away mode changes when guests are present:
+
+- **Enable Guest Mode**: Toggle to enable guest mode functionality
+- **Guest Mode Sensor**: Select a binary sensor, input_boolean, or switch that indicates when guests are present
+  - When this sensor is "on", the system will NOT automatically switch to away mode
+  - Useful for situations where family members leave but guests remain at home
+  - Common sensors: guest mode input_boolean, guest room occupancy sensor, or manual guest switch
 
 ### Button-Based Mode Changes
 
@@ -198,6 +223,52 @@ Different schedules for different days:
    - Sunday-Thursday: 22:00:00 (early bedtime for work nights)
    - Friday-Saturday: 23:30:00 (later bedtime for weekends)
 
+### Using Schedule Helpers (Recommended for Complex Schedules)
+
+Create schedule helpers in Home Assistant for maximum flexibility:
+
+#### Step 1: Create Schedule Helpers
+
+In Home Assistant, go to **Settings** → **Devices & Services** → **Helpers** and create:
+
+```yaml
+# Example schedule configurations
+schedule.workday_schedule:
+  name: "Workday Schedule"
+  # Configure: Mon-Fri, all day
+
+schedule.weekend_schedule:
+  name: "Weekend Schedule" 
+  # Configure: Sat-Sun, all day
+
+schedule.vacation_schedule:
+  name: "Vacation Schedule"
+  # Configure: Specific vacation dates
+```
+
+#### Step 2: Create Multiple Mode Manager Instances
+
+**Workday Mode Manager**:
+- Day Mode: Schedule Type = "Use Schedule Helper", Schedule = `schedule.workday_schedule`
+- Fixed Time: 06:30:00
+- Trigger: "Earlier of Fixed Time or Sunrise"
+
+**Weekend Mode Manager**:
+- Day Mode: Schedule Type = "Use Schedule Helper", Schedule = `schedule.weekend_schedule`  
+- Fixed Time: 09:00:00
+- Trigger: "Later of Fixed Time or Sunrise"
+
+**Vacation Mode Manager**:
+- Day Mode: Schedule Type = "Use Schedule Helper", Schedule = `schedule.vacation_schedule`
+- Fixed Time: 10:00:00 (sleep in on vacation!)
+
+#### Benefits of Schedule Helpers:
+- **Visual calendar interface** for setting dates
+- **Holiday integration** with Home Assistant calendar
+- **Easy temporary changes** without reconfiguring automations
+- **Complex patterns** like "every other Friday" or "first Monday of month"
+- **Vacation mode** with specific date ranges
+
 ### Presence + Time Setup
 
 1. Configure time-based modes as above
@@ -209,6 +280,38 @@ Different schedules for different days:
 5. Configure Return logic:
    - Return Trigger Logic: "When ANY selected person/device returns home"
    - Return from Away Behavior: "Use time-based mode (recommended)"
+
+### Guest Mode Setup
+
+Perfect for when you have guests staying over:
+
+#### Step 1: Create Guest Mode Helper
+In Home Assistant, create an input_boolean:
+```yaml
+input_boolean:
+  guest_mode:
+    name: "Guest Mode"
+    icon: mdi:account-multiple
+```
+
+#### Step 2: Configure Mode Manager
+- Enable Guest Mode: ✅ On
+- Guest Mode Sensor: `input_boolean.guest_mode`
+
+#### Step 3: Usage Scenarios
+**Normal Operation**:
+- Family leaves → Mode changes to "Away" ✅
+- Family returns → Mode changes back ✅
+
+**With Guests** (guest_mode = on):
+- Family leaves → Mode stays "Day/Evening/Night" (no away mode) ✅
+- Guests can enjoy normal lighting/climate
+- Family returns → Normal operation continues ✅
+
+**Manual Control**:
+- Turn on guest mode before leaving guests alone
+- Turn off guest mode when guests leave
+- Can be automated with guest room occupancy sensors
 
 ### Alternative Presence Scenarios
 
