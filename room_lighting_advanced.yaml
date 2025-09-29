@@ -6,173 +6,176 @@ blueprint:
     advanced conditions, fade times, delays, and sophisticated turn-off logic.
   domain: automation
   input:
-    # ==========================================
-    # ROOM SETUP
-    # ==========================================
-    area_selector:
-      name: Area (Optional)
-      description: Select an area to automatically populate room name and suggest devices
-      default: {}
-      selector:
-        area: {}
-    
-    room_name:
-      name: Room Name (Override)
-      description: Override the area name or provide a custom room name
-      default: ""
-      selector:
-        text: {}
-    
-    # ==========================================
-    # DEVICES TO AUTOMATE
-    # ==========================================
-    
-    # Light Group 1
-    light_group_1_name:
-      name: Light Group 1 Name
-      description: Name for the first group of lights (e.g., "Main Lights")
-      default: "Main Lights"
-      selector:
-        text: {}
-    
-    light_group_1_entities:
-      name: Light Group 1 - Entities
-      description: Select lights for Group 1
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-    
-    # Light Group 2
-    light_group_2_name:
-      name: Light Group 2 Name (Optional)
-      description: Name for the second group of lights (e.g., "Accent Lights")
-      default: ""
-      selector:
-        text: {}
-    
-    light_group_2_entities:
-      name: Light Group 2 - Entities
-      description: Select lights for Group 2
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-    
-    # Light Group 3
-    light_group_3_name:
-      name: Light Group 3 Name (Optional)
-      description: Name for the third group of lights (e.g., "Night Lights")
-      default: ""
-      selector:
-        text: {}
-    
-    light_group_3_entities:
-      name: Light Group 3 - Entities
-      description: Select lights for Group 3
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: light
-            - domain: switch
-            - domain: fan
-    
-    # ==========================================
-    # MEANS TO ACTIVATE
-    # ==========================================
-    motion_sensors:
-      name: Motion Sensors
-      description: Motion sensors that activate lights
-      default: {}
-      selector:
-        target:
-          entity:
-            domain: binary_sensor
-            device_class: motion
-    
-    contact_sensors:
-      name: Contact Sensors (Doors/Windows)
-      description: Contact sensors that activate lights when opened
-      default: {}
-      selector:
-        target:
-          entity:
-            domain: binary_sensor
-            device_class: 
-              - door
-              - window
-              - garage_door
-    
-    button_devices:
-      name: Button Devices
-      description: Buttons, switches, or remotes that activate lights
-      default: {}
-      selector:
-        target:
-          entity:
-            - domain: sensor
-            - domain: binary_sensor
-            - domain: device_tracker
-    
-    illuminance_sensor:
-      name: Illuminance Sensor (Optional)
-      description: Light sensor to prevent activation during bright conditions
-      default: {}
-      selector:
-        entity:
-          domain: sensor
-          device_class: illuminance
-    
-    # ==========================================
-    # ACTIVATION OPTIONS
-    # ==========================================
-    enable_motion_activation:
-      name: Enable Motion Activation
-      description: Activate lights when motion is detected
-      default: true
-      selector:
-        boolean: {}
-    
-    enable_contact_activation:
-      name: Enable Contact Activation
-      description: Activate lights when doors/windows open
-      default: false
-      selector:
-        boolean: {}
-    
-    enable_button_activation:
-      name: Enable Button Activation
-      description: Activate lights when buttons are pressed
-      default: false
-      selector:
-        boolean: {}
-    
-    enable_illuminance_control:
-      name: Enable Illuminance Control
-      description: Only activate if illuminance is below threshold
-      default: false
-      selector:
-        boolean: {}
-    
-    illuminance_threshold:
-      name: Illuminance Threshold (lux)
-      description: Don't activate if illuminance is above this value
-      default: 50
-      selector:
-        number:
-          min: 0
-          max: 1000
-          step: 1
-          mode: box
-    
-    # ==========================================
+    room_setup_section:
+      name: "🏠 Room Setup"
+      description: "Configure room name and area selection"
+      collapsed: true
+      input:
+        area_selector:
+          name: Area (Optional)
+          description: Select an area to automatically populate room name and suggest devices
+          default: {}
+          selector:
+            area: {}
+        
+        room_name:
+          name: Room Name (Override)
+          description: Override the area name or provide a custom room name
+          default: ""
+          selector:
+            text: {}
+    devices_section:
+      name: "💡 Devices to Automate"
+      description: "Select the lights and devices to control"
+      collapsed: true
+      input:
+        # Light Group 1
+        light_group_1_name:
+          name: Light Group 1 Name
+          description: Name for the first group of lights (e.g., "Main Lights")
+          default: "Main Lights"
+          selector:
+            text: {}
+        
+        light_group_1_entities:
+          name: Light Group 1 - Entities
+          description: Select lights for Group 1
+          default: {}
+          selector:
+            target:
+              entity:
+                - domain: light
+                - domain: switch
+                - domain: fan
+        
+        # Light Group 2
+        light_group_2_name:
+          name: Light Group 2 Name (Optional)
+          description: Name for the second group of lights (e.g., "Accent Lights")
+          default: ""
+          selector:
+            text: {}
+        
+        light_group_2_entities:
+          name: Light Group 2 - Entities
+          description: Select lights for Group 2
+          default: {}
+          selector:
+            target:
+              entity:
+                - domain: light
+                - domain: switch
+                - domain: fan
+        
+        # Light Group 3
+        light_group_3_name:
+          name: Light Group 3 Name (Optional)
+          description: Name for the third group of lights (e.g., "Night Lights")
+          default: ""
+          selector:
+            text: {}
+        
+        light_group_3_entities:
+          name: Light Group 3 - Entities
+          description: Select lights for Group 3
+          default: {}
+          selector:
+            target:
+              entity:
+                - domain: light
+                - domain: switch
+                - domain: fan
+    activation_triggers_section:
+      name: "🚪 Means to Activate"
+      description: "Configure sensors and devices that trigger light activation"
+      collapsed: true
+      input:
+        motion_sensors:
+          name: Motion Sensors
+          description: Motion sensors that activate lights
+          default: {}
+          selector:
+            target:
+              entity:
+                domain: binary_sensor
+                device_class: motion
+        
+        contact_sensors:
+          name: Contact Sensors (Doors/Windows)
+          description: Contact sensors that activate lights when opened
+          default: {}
+          selector:
+            target:
+              entity:
+                domain: binary_sensor
+                device_class: 
+                  - door
+                  - window
+                  - garage_door
+        
+        button_devices:
+          name: Button Devices
+          description: Buttons, switches, or remotes that activate lights
+          default: {}
+          selector:
+            target:
+              entity:
+                - domain: sensor
+                - domain: binary_sensor
+                - domain: device_tracker
+        
+        illuminance_sensor:
+          name: Illuminance Sensor (Optional)
+          description: Light sensor to prevent activation during bright conditions
+          default: {}
+          selector:
+            entity:
+              domain: sensor
+              device_class: illuminance
+    activation_options_section:
+      name: "⚙️ Activation Options"
+      description: "Configure when and how lights are activated"
+      collapsed: true
+      input:
+        enable_motion_activation:
+          name: Enable Motion Activation
+          description: Activate lights when motion is detected
+          default: true
+          selector:
+            boolean: {}
+        
+        enable_contact_activation:
+          name: Enable Contact Activation
+          description: Activate lights when doors/windows open
+          default: false
+          selector:
+            boolean: {}
+        
+        enable_button_activation:
+          name: Enable Button Activation
+          description: Activate lights when buttons are pressed
+          default: false
+          selector:
+            boolean: {}
+        
+        enable_illuminance_control:
+          name: Enable Illuminance Control
+          description: Only activate if illuminance is below threshold
+          default: false
+          selector:
+            boolean: {}
+        
+        illuminance_threshold:
+          name: Illuminance Threshold (lux)
+          description: Don't activate if illuminance is above this value
+          default: 50
+          selector:
+            number:
+              min: 0
+              max: 1000
+              step: 1
+              mode: box
+        # ==========================================
     # LIGHTING PERIODS (PER-GROUP PER-MODE SETTINGS)
     # ==========================================
     
@@ -639,23 +642,23 @@ blueprint:
 variables:
   # Determine the effective room name (area name or override)
   effective_room_name: >
-    {% if room_name and room_name | trim != "" %}
-      {{ room_name }}
-    {% elif area_selector %}
-      {{ area_name(area_selector) }}
+    {% if room_setup_section.room_name and room_setup_section.room_name | trim != "" %}
+      {{ room_setup_section.room_name }}
+    {% elif room_setup_section.area_selector %}
+      {{ area_name(room_setup_section.area_selector) }}
     {% else %}
       "Room"
     {% endif %}
   
   # Light group entity lists
   effective_group_1_lights: >
-    {{ light_group_1_entities.entity_id | default([]) }}
+    {{ devices_section.light_group_1_entities.entity_id | default([]) }}
   
   effective_group_2_lights: >
-    {{ light_group_2_entities.entity_id | default([]) }}
+    {{ devices_section.light_group_2_entities.entity_id | default([]) }}
   
   effective_group_3_lights: >
-    {{ light_group_3_entities.entity_id | default([]) }}
+    {{ devices_section.light_group_3_entities.entity_id | default([]) }}
   
   # Combined list of all lights for triggers and conditions
   effective_lights: >
@@ -663,13 +666,13 @@ variables:
   
   # Device entity lists
   effective_motion_sensors: >
-    {{ motion_sensors.entity_id | default([]) }}
+    {{ activation_triggers_section.motion_sensors.entity_id | default([]) }}
   
   effective_contact_sensors: >
-    {{ contact_sensors.entity_id | default([]) }}
+    {{ activation_triggers_section.contact_sensors.entity_id | default([]) }}
   
   effective_button_devices: >
-    {{ button_devices.entity_id | default([]) }}
+    {{ activation_triggers_section.button_devices.entity_id | default([]) }}
   
   # Alternative turn-off devices
   effective_alternative_turn_off: >
@@ -810,8 +813,8 @@ variables:
   
   # Check illuminance condition
   illuminance_ok: >
-    {% if enable_illuminance_control and illuminance_sensor %}
-      {{ states(illuminance_sensor) | int(999) < illuminance_threshold }}
+    {% if activation_options_section.enable_illuminance_control and activation_triggers_section.illuminance_sensor %}
+      {{ states(activation_triggers_section.illuminance_sensor) | int(999) < activation_options_section.illuminance_threshold }}
     {% else %}
       true
     {% endif %}
@@ -835,13 +838,13 @@ variables:
 trigger:
   # Motion sensor activation
   - platform: state
-    entity_id: "{{ effective_motion_sensors }}"
+    entity_id: !input activation_triggers_section.motion_sensors
     to: "on"
     id: motion_on
   
   # Motion sensor deactivation with timeout
   - platform: state
-    entity_id: "{{ effective_motion_sensors }}"
+    entity_id: !input activation_triggers_section.motion_sensors
     to: "off"
     for:
       minutes: "{{ motion_timeout }}"
@@ -849,13 +852,13 @@ trigger:
   
   # Contact sensor activation
   - platform: state
-    entity_id: "{{ effective_contact_sensors }}"
+    entity_id: !input activation_triggers_section.contact_sensors
     to: "on"
     id: contact_open
   
   # Contact sensor deactivation
   - platform: state
-    entity_id: "{{ effective_contact_sensors }}"
+    entity_id: !input activation_triggers_section.contact_sensors
     to: "off"
     id: contact_closed
   
@@ -870,7 +873,7 @@ trigger:
   
   # State changes for button devices
   - platform: state
-    entity_id: "{{ effective_button_devices }}"
+    entity_id: !input activation_triggers_section.button_devices
     id: button_state_change
   
   # Mode changes
