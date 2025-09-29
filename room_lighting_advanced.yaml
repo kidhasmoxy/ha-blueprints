@@ -932,22 +932,16 @@ trigger:
   - platform: state
     entity_id: !input light_group_1_entities
     id: manual_change
-    context:
-      user_id: null
     enabled: "{{ light_group_1_entities | default([]) | length > 0 }}"
 
   - platform: state
     entity_id: !input light_group_2_entities
     id: manual_change
-    context:
-      user_id: null
     enabled: "{{ light_group_2_entities | default([]) | length > 0 }}"
 
   - platform: state
     entity_id: !input light_group_3_entities
     id: manual_change
-    context:
-      user_id: null
     enabled: "{{ light_group_3_entities | default([]) | length > 0 }}"
 
 condition:
