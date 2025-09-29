@@ -464,10 +464,8 @@ trigger:
   
   - platform: sun
     event: sunrise
-    {% if sunrise_offset | int != 0 %}
     offset:
-      minutes: !input sunrise_offset
-    {% endif %}
+      minutes: "{{ sunrise_offset }}"
     id: "sunrise"
     enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
@@ -479,10 +477,8 @@ trigger:
   
   - platform: sun
     event: sunset
-    {% if sunset_offset | int != 0 %}
     offset:
-      minutes: !input sunset_offset
-    {% endif %}
+      minutes: "{{ sunset_offset }}"
     id: "sunset"
     enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
@@ -494,10 +490,8 @@ trigger:
   
   - platform: sun
     event: sunset
-    {% if night_sunset_offset | int != 0 %}
     offset:
-      minutes: !input night_sunset_offset
-    {% endif %}
+      minutes: "{{night_sunset_offset}}"
     id: "night_sunset"
     enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
