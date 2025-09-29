@@ -580,14 +580,13 @@ variables:
   button_evening_event: !input button_evening_mode
   button_night_event: !input button_night_mode
   button_away_event: !input button_away_mode
-  # Switch mappings
-  switch_mappings:
-    - mode: !input switch_mode_1
-      entity: !input switch_entity_1
-      state: !input switch_state_1
-    - mode: !input switch_mode_2
-      entity: !input switch_entity_2
-      state: !input switch_state_2
+  # Switch variables
+  switch_mode_1: !input switch_mode_1
+  switch_entity_1: !input switch_entity_1
+  switch_state_1: !input switch_state_1
+  switch_mode_2: !input switch_mode_2
+  switch_entity_2: !input switch_entity_2
+  switch_state_2: !input switch_state_2
 
 trigger:
   # Day Mode triggers
