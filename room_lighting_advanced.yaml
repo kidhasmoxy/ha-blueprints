@@ -131,7 +131,6 @@ blueprint:
         illuminance_sensor:
           name: Illuminance Sensor (Optional)
           description: Light sensor to prevent activation during bright conditions
-          default: {}
           selector:
             entity:
               domain: sensor
@@ -886,11 +885,9 @@ trigger:
     id: mode_change
   
   # Manual light changes (for override detection)
-  - platform: state
-    entity_id: "{{ effective_lights }}"
+  - platform: template
+    value_template: "{{ expand(light_group_1_entities + light_group_2_entities + light_group_3_entities | default([])) | selectattr('context.user_id', 'defined') | selectattr('context.user_id', 'eq', None) | list | length > 0 }}"
     id: manual_change
-    context:
-      user_id: null
 
 condition:
   # Always allow the automation to run - conditions are handled in actions
