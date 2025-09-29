@@ -319,10 +319,11 @@ blueprint:
           description: Select device tracker or person entities for presence detection
           default: []
           selector:
-            target:
-              entity:
-                - domain: person
-                - domain: device_tracker
+            entity:
+              domain:
+                - person
+                - device_tracker
+              multiple: true
     
         away_trigger_logic:
           name: Away Mode Trigger Logic
@@ -592,18 +593,18 @@ trigger:
   
   # Presence triggers
   - platform: state
-    entity_id: "{{ presence_trackers.entity_id if presence_trackers else [] }}"
+    entity_id: "{{ presence_trackers if presence_trackers else [] }}"
     to: 
       - "not_home"
       - "away"
     id: "presence_away"
-    enabled: "{{ enable_presence_modes and presence_trackers.entity_id | default([]) | length > 0 }}"
+    enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
   
   - platform: state
-    entity_id: "{{ presence_trackers.entity_id if presence_trackers else [] }}"
+    entity_id: "{{ presence_trackers if presence_trackers else [] }}"
     to: "home"
     id: "presence_home"
-    enabled: "{{ enable_presence_modes and presence_trackers.entity_id | default([]) | length > 0 }}"
+    enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
   
   # Button triggers
   - platform: event
@@ -827,7 +828,7 @@ action:
             value_template: "{{ current_mode == away_mode }}"
           - condition: template
             value_template: >
-              {% set tracker_entities = presence_trackers.entity_id | default([]) %}
+              {% set tracker_entities = presence_trackers | default([]) %}
               {% set logic = return_trigger_logic %}
               {% if tracker_entities | length == 0 %}
                 false
