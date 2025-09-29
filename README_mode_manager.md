@@ -63,9 +63,10 @@ input_select:
 
 Enable automatic mode changes based on time with clear trigger options:
 
-- **Enable Time-Based Mode Changes**: Toggle to enable/disable all time-based triggers
+- **Enable Time-Based Mode Changes**: Master toggle to enable/disable all time-based triggers
 
 #### Day Mode Configuration
+- **Enable Day Mode**: Toggle to enable/disable Day mode changes specifically
 - **Day Mode**: Enter the exact mode name from your input_select for daytime (e.g., "Day", "Morning")
 - **Day Mode Trigger**: Choose how to trigger Day mode:
   - "Fixed Time" - Use only the fixed time
@@ -82,6 +83,7 @@ Enable automatic mode changes based on time with clear trigger options:
 - **Day Mode - Schedule Helper**: Select a schedule entity (only used if "Use Schedule Helper" chosen)
 
 #### Evening Mode Configuration  
+- **Enable Evening Mode**: Toggle to enable/disable Evening mode changes specifically
 - **Evening Mode**: Enter the exact mode name from your input_select for evening (e.g., "Evening", "Dusk")
 - **Evening Mode Trigger**: Choose how to trigger Evening mode:
   - "Fixed Time" - Use only the fixed time
@@ -98,6 +100,7 @@ Enable automatic mode changes based on time with clear trigger options:
 - **Evening Mode - Schedule Helper**: Select a schedule entity (only used if "Use Schedule Helper" chosen)
 
 #### Night Mode Configuration
+- **Enable Night Mode**: Toggle to enable/disable Night mode changes specifically
 - **Night Mode**: Enter the exact mode name from your input_select for night (e.g., "Night", "Sleep")
 - **Night Mode - Fixed Time**: Specific time to trigger Night mode (always uses fixed time)
 - **Night Mode - Schedule Type**: Choose how to control when Night mode is triggered:
@@ -131,9 +134,9 @@ Configure mode changes based on presence with flexible logic:
 
 Prevent automatic away mode changes when guests are present:
 
-- **Enable Guest Mode**: Toggle to enable guest mode functionality
-- **Guest Mode Sensor**: Select a binary sensor, input_boolean, or switch that indicates when guests are present
+- **Guest Mode Sensor (Optional)**: Select a binary sensor, input_boolean, or switch that indicates when guests are present
   - When this sensor is "on", the system will NOT automatically switch to away mode
+  - Leave empty to disable guest mode functionality
   - Useful for situations where family members leave but guests remain at home
   - Common sensors: guest mode input_boolean, guest room occupancy sensor, or manual guest switch
 
@@ -174,6 +177,25 @@ Configure mode changes via switch states (up to 2 switch mappings):
    - Name: "Night"
    - Fixed Time: 22:00:00
 6. Set skip modes to "Away" so time changes don't override Away mode
+
+### Day-Only Setup (Selective Mode Control)
+
+Perfect for when you only want specific mode automation:
+
+1. **Enable Time-Based Mode Changes**: ✅ On
+2. **Day Mode Configuration**:
+   - Enable Day Mode: ✅ On
+   - Day Mode: "Day"
+   - Trigger: "Earlier of Fixed Time or Sunrise"
+   - Fixed Time: 07:00:00
+   - Sunrise Offset: 30
+3. **Evening Mode Configuration**:
+   - Enable Evening Mode: ❌ Off (disabled)
+4. **Night Mode Configuration**:
+   - Enable Night Mode: ❌ Off (disabled)
+5. **Presence-Based Changes**: ❌ Off (if you don't want away mode)
+
+**Result**: Only Day mode will trigger automatically. Evening, Night, and Away modes are completely disabled and won't interfere with your setup.
 
 ### Sunrise/Sunset Setup
 
@@ -296,7 +318,6 @@ input_boolean:
 ```
 
 #### Step 2: Configure Mode Manager
-- Enable Guest Mode: ✅ On
 - Guest Mode Sensor: `input_boolean.guest_mode`
 
 #### Step 3: Usage Scenarios

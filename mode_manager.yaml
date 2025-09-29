@@ -27,6 +27,13 @@ blueprint:
         boolean: {}
     
     # Morning/Day Mode Settings
+    enable_morning_mode:
+      name: "Enable Day Mode"
+      description: "Enable automatic Day mode changes"
+      default: true
+      selector:
+        boolean: {}
+    
     morning_mode:
       name: "Day Mode"
       description: "Enter the mode name from your input_select to set during daytime (e.g., 'Day', 'Morning')"
@@ -114,6 +121,13 @@ blueprint:
           multiple: false
     
     # Evening Mode Settings
+    enable_evening_mode:
+      name: "Enable Evening Mode"
+      description: "Enable automatic Evening mode changes"
+      default: true
+      selector:
+        boolean: {}
+    
     evening_mode:
       name: "Evening Mode"
       description: "Enter the mode name from your input_select to set during evening (e.g., 'Evening', 'Dusk')"
@@ -201,6 +215,13 @@ blueprint:
           multiple: false
     
     # Night Mode Settings
+    enable_night_mode:
+      name: "Enable Night Mode"
+      description: "Enable automatic Night mode changes"
+      default: true
+      selector:
+        boolean: {}
+    
     night_mode:
       name: "Night Mode"
       description: "Enter the mode name from your input_select to set at night (e.g., 'Night', 'Sleep')"
@@ -348,16 +369,9 @@ blueprint:
     # ==========================================
     # GUEST MODE
     # ==========================================
-    enable_guest_mode:
-      name: Enable Guest Mode
-      description: Enable guest mode to prevent away mode changes when guests are present
-      default: false
-      selector:
-        boolean: {}
-    
     guest_mode_sensor:
-      name: Guest Mode Sensor
-      description: Binary sensor that indicates when guests are present (prevents away mode when 'on')
+      name: Guest Mode Sensor (Optional)
+      description: Binary sensor that indicates when guests are present (prevents away mode when 'on'). Leave empty to disable guest mode.
       default: ""
       selector:
         entity:
@@ -535,6 +549,9 @@ variables:
   morning_trigger_type: !input morning_trigger_type
   evening_trigger_type: !input evening_trigger_type
   enable_time_modes: !input enable_time_modes
+  enable_morning_mode: !input enable_morning_mode
+  enable_evening_mode: !input enable_evening_mode
+  enable_night_mode: !input enable_night_mode
   presence_trackers: !input presence_trackers
   away_trigger_logic: !input away_trigger_logic
   return_trigger_logic: !input return_trigger_logic
@@ -553,7 +570,6 @@ variables:
   night_days: !input night_days
   night_schedule: !input night_schedule
   current_weekday: "{{ now().strftime('%A').lower() }}"
-  enable_guest_mode: !input enable_guest_mode
   guest_mode_sensor: !input guest_mode_sensor
   # Button mappings
   button_mappings:
@@ -579,31 +595,31 @@ trigger:
   - platform: time
     at: !input morning_time
     id: "morning_time"
-    enabled: "{{ enable_time_modes and morning_trigger_type in ['time', 'earlier', 'later'] }}"
+    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: sun
     event: sunrise
     offset: !input sunrise_offset
     id: "sunrise"
-    enabled: "{{ enable_time_modes and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
+    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
   # Evening Mode triggers
   - platform: time
     at: !input evening_time
     id: "evening_time"
-    enabled: "{{ enable_time_modes and evening_trigger_type in ['time', 'earlier', 'later'] }}"
+    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: sun
     event: sunset
     offset: !input sunset_offset
     id: "sunset"
-    enabled: "{{ enable_time_modes and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
+    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
   # Night Mode trigger (always fixed time)
   - platform: time
     at: !input night_time
     id: "night_time"
-    enabled: !input enable_time_modes
+    enabled: "{{ enable_time_modes and enable_night_mode }}"
   
   # Presence triggers
   - platform: state
@@ -658,6 +674,8 @@ action:
             id: 
               - "morning_time"
               - "sunrise"
+          - condition: template
+            value_template: "{{ enable_morning_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
@@ -716,6 +734,8 @@ action:
               - "evening_time"
               - "sunset"
           - condition: template
+            value_template: "{{ enable_evening_mode }}"
+          - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
@@ -771,6 +791,8 @@ action:
           - condition: trigger
             id: "night_time"
           - condition: template
+            value_template: "{{ enable_night_mode }}"
+          - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
             value_template: >
@@ -815,9 +837,8 @@ action:
               {% endif %}
           - condition: template
             value_template: >
-              {% set guest_enabled = enable_guest_mode %}
               {% set guest_sensor = guest_mode_sensor %}
-              {% if guest_enabled and guest_sensor != '' %}
+              {% if guest_sensor != '' %}
                 {{ not is_state(guest_sensor, 'on') }}
               {% else %}
                 true
