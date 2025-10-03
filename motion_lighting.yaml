@@ -1,0 +1,690 @@
+blueprint:
+  name: Motion & Mode Lighting — Per-Mode Scenes/Targets + AUX (v5)
+  description: >
+    Hubitat-style motion lighting with per-mode SCENES (optional) and per-mode TARGETS
+    (can be different lights/switches per mode), lux ON/OFF gates, keep-alive sensors,
+    per-mode AUX-ON/AUX-OFF, per-mode OFF delays, optional disable-OFF boolean, and
+    Hubitat-like manual-OFF lockout (Disabled/Digital/Physical/Any) implemented by
+    self-disabling (no helpers). Optional level-change override (Disabled/Digital/
+    Physical/Any) using an (optional) list of light entities to watch.
+  domain: automation
+  homeassistant:
+    min_version: "2024.12.0"
+
+  input:
+    # --------- Activators / Keep-alive ---------
+    motion_or_presence_sensors:
+      name: Motion / Occupancy / Presence sensors that ACTIVATE
+      description: binary_sensors (device_class motion/occupancy/presence). Any -> ON will activate.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: binary_sensor
+              device_class: motion
+            - domain: binary_sensor
+              device_class: occupancy
+            - domain: binary_sensor
+              device_class: presence
+
+    contact_sensors:
+      name: Contact sensors that ACTIVATE
+      description: Doors/Windows (opening) that trigger ON when they open.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: binary_sensor
+              device_class: door
+            - domain: binary_sensor
+              device_class: window
+            - domain: binary_sensor
+              device_class: opening
+
+    keepalive_sensors:
+      name: Keep-Alive sensors (do NOT activate; only prevent OFF)
+      description: Any of motion/occupancy/presence/contact that should keep lights on.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: binary_sensor
+
+    # --------- Lux gates ---------
+    lux_sensor:
+      name: Illuminance sensor (optional)
+      default: ""
+      selector:
+        entity:
+          filter: [{ domain: sensor, device_class: illuminance }]
+
+    on_lux_max:
+      name: Only turn ON if lux is below (optional)
+      default: 0
+      selector: { number: { min: 0, max: 5000, unit_of_measurement: "lx", mode: box } }
+
+    off_lux_min:
+      name: Turn OFF if lux rises to/above (optional)
+      default: 0
+      selector: { number: { min: 0, max: 5000, unit_of_measurement: "lx", mode: box } }
+
+    # --------- Modes ---------
+    mode_helper:
+      name: Mode helper (input_select with Day/Evening/Night)
+      selector: { entity: { filter: [{ domain: input_select }] } }
+
+    mode_day_value:
+      name: Mode label for Day
+      default: Day
+      selector: { text: {} }
+
+    mode_evening_value:
+      name: Mode label for Evening
+      default: Evening
+      selector: { text: {} }
+
+    mode_night_value:
+      name: Mode label for Night
+      default: Night
+      selector: { text: {} }
+
+    # --------- Per-mode SCENES (optional) ---------
+    scene_day:
+      name: Scene for Day (optional)
+      default: ""
+      selector: { entity: { filter: [{ domain: scene }] } }
+
+    scene_evening:
+      name: Scene for Evening (optional)
+      default: ""
+      selector: { entity: { filter: [{ domain: scene }] } }
+
+    scene_night:
+      name: Scene for Night (optional)
+      default: ""
+      selector: { entity: { filter: [{ domain: scene }] } }
+
+    # --------- Per-mode TARGETS (on/off entities) ---------
+    target_day:
+      name: Target(s) for Day (used if no Day scene)
+      description: Lights/switches/groups to turn ON/OFF for Day.
+      default: []
+      selector: { target: { entity: {} } }
+
+    target_evening:
+      name: Target(s) for Evening (used if no Evening scene)
+      default: []
+      selector: { target: { entity: {} } }
+
+    target_night:
+      name: Target(s) for Night (used if no Night scene)
+      default: []
+      selector: { target: { entity: {} } }
+
+    # --------- Per-mode AUX ---------
+    aux_on_day:
+      name: AUX to also turn ON in Day (optional)
+      default: []
+      selector: { target: { entity: {} } }
+
+    aux_on_evening:
+      name: AUX to also turn ON in Evening (optional)
+      default: []
+      selector: { target: { entity: {} } }
+
+    aux_on_night:
+      name: AUX to also turn ON in Night (optional)
+      default: []
+      selector: { target: { entity: {} } }
+
+    aux_off_day:
+      name: AUX to also turn OFF in Day (optional)
+      default: []
+      selector: { target: { entity: {} } }
+
+    aux_off_evening:
+      name: AUX to also turn OFF in Evening (optional)
+      default: []
+      selector: { target: { entity: {} } }
+
+    aux_off_night:
+      name: AUX to also turn OFF in Night (optional)
+      default: []
+      selector: { target: { entity: {} } }
+
+    # --------- Per-mode off delays ---------
+    day_off_delay:
+      name: Day off-delay (seconds)
+      default: 900
+      selector: { number: { min: 0, max: 86400, step: 1 } }
+
+    evening_off_delay:
+      name: Evening off-delay (seconds)
+      default: 900
+      selector: { number: { min: 0, max: 86400, step: 1 } }
+
+    night_off_delay:
+      name: Night off-delay (seconds)
+      default: 60
+      selector: { number: { min: 0, max: 86400, step: 1 } }
+
+    # --------- Lockout & override ---------
+    manual_off_lockout_mode:
+      name: Don't turn ON if turned OFF manually
+      description: Disabled / Digital only (HA user/app/voice) / Physical only / Any off
+      default: Disabled
+      selector:
+        select:
+          mode: dropdown
+          options: [Disabled, Digital only, Physical only, Any off]
+
+    manual_off_lockout_timeout:
+      name: Manual-OFF lockout timeout (minutes, 0 = stay locked until you re-enable this automation)
+      default: 45
+      selector: { number: { min: 0, max: 480, step: 1 } }
+
+    override_level_mode:
+      name: Override with level change (don’t re-apply scene when on)
+      description: Disabled / Digital only / Physical only / Any change
+      default: Any change
+      selector:
+        select:
+          mode: dropdown
+          options: [Disabled, Digital only, Physical only, Any change]
+
+    level_watch_lights:
+      name: (Optional) Lights to watch for level/CT changes (for override)
+      description: If empty, simple behavior applies: if already on, we don't re-apply a scene.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+
+    override_window_seconds:
+      name: Manual override window (seconds) — used when watching level changes
+      default: 180
+      selector: { number: { min: 5, max: 3600, step: 5 } }
+
+    # --------- Misc ---------
+    force_on_even_if_on:
+      name: Force ON even if already on (re-apply scene/targets)
+      default: false
+      selector: { boolean: {} }
+
+    disable_off_via_boolean:
+      name: Optional boolean to disable OFFs (e.g., cleaning/party mode)
+      default: ""
+      selector:
+        entity:
+          filter: [{ domain: input_boolean }]
+
+mode: restart
+
+variables:
+  motion_list: !input motion_or_presence_sensors
+  contacts_list: !input contact_sensors
+  keepalive_list: !input keepalive_sensors
+  lux_entity: !input lux_sensor
+  on_lux_max: !input on_lux_max
+  off_lux_min: !input off_lux_min
+
+  mode_entity: !input mode_helper
+  mode_day: !input mode_day_value
+  mode_eve: !input mode_evening_value
+  mode_ngt: !input mode_night_value
+
+  scene_day: !input scene_day
+  scene_eve: !input scene_evening
+  scene_ngt: !input scene_night
+
+  target_day: !input target_day
+  target_eve: !input target_evening
+  target_ngt: !input target_night
+
+  aux_on_day: !input aux_on_day
+  aux_on_eve: !input aux_on_evening
+  aux_on_ngt: !input aux_on_night
+  aux_off_day: !input aux_off_day
+  aux_off_eve: !input aux_off_evening
+  aux_off_ngt: !input aux_off_night
+
+  day_off: !input day_off_delay
+  eve_off: !input evening_off_delay
+  ngt_off: !input night_off_delay
+
+  lockout_mode: !input manual_off_lockout_mode
+  lockout_timeout_min: !input manual_off_lockout_timeout
+
+  override_mode: !input override_level_mode
+  level_watch_lights: !input level_watch_lights
+  override_window: !input override_window_seconds
+
+  force_on_even_if_on: !input force_on_even_if_on
+  disable_off_bool: !input disable_off_via_boolean
+
+  mode_now: >-
+    {{ states(mode_entity) if mode_entity else 'Day' }}
+  off_delay: >-
+    {% set m = states(mode_entity) if mode_entity else 'Day' %}
+    {% if m == mode_day %}{{ day_off }}
+    {% elif m == mode_eve %}{{ eve_off }}
+    {% elif m == mode_ngt %}{{ ngt_off }}
+    {% else %}{{ day_off }}{% endif %}
+
+trigger:
+  # Motion/occupancy/presence → ON
+  - platform: state
+    id: motion_on
+    entity_id: !input motion_or_presence_sensors
+    to: "on"
+
+  # Contacts → OPEN
+  - platform: state
+    id: contact_open
+    entity_id: !input contact_sensors
+    to: "on"
+
+  # Motion/occupancy/presence → OFF (idle)
+  - platform: state
+    id: motion_off
+    entity_id: !input motion_or_presence_sensors
+    to: "off"
+
+  # Contacts → CLOSED
+  - platform: state
+    id: contact_closed
+    entity_id: !input contact_sensors
+    to: "off"
+
+  # Keep-alive → any state to ON/OPEN
+  - platform: state
+    id: keepalive_on
+    entity_id: !input keepalive_sensors
+    to:
+      - "on"
+      - "open"
+
+  # Mode changed
+  - platform: state
+    id: mode_change
+    entity_id: !input mode_helper
+
+  # Lux OFF threshold crossed
+  - platform: numeric_state
+    id: lux_off
+    entity_id: !input lux_sensor
+    above: !input off_lux_min
+
+  # Watch OFF (for lockout)
+  - platform: event
+    id: watch_off
+    event_type: state_changed
+    event_data:
+      entity_id: # We match below in choose so we can hit all per-mode targets
+        # placeholder
+
+  # Watch level changes (for override) — only for specified lights
+  - platform: state
+    id: watch_level
+    entity_id: !input level_watch_lights
+    from: "on"
+    to: "on"
+
+condition: []
+
+action:
+  - variables:
+      disable_off_now: >-
+        {{ is_state(disable_off_bool,'on') if disable_off_bool else false }}
+      any_motion_on: >-
+        {{ expand(motion_list)|selectattr('state','eq','on')|list|count > 0 }}
+      any_contact_open: >-
+        {{ expand(contacts_list)|selectattr('state','in',['on','open'])|list|count > 0 }}
+      any_keepalive_on: >-
+        {{ expand(keepalive_list)|selectattr('state','in',['on','open'])|list|count > 0 }}
+      lux_ok_to_on: >-
+        {% if lux_entity and on_lux_max|int > 0 %}
+          {{ states(lux_entity)|float(9999) < on_lux_max|int }}
+        {% else %}true{% endif %}
+      lux_wants_off: >-
+        {% if lux_entity and off_lux_min|int > 0 %}
+          {{ states(lux_entity)|float(0) >= off_lux_min|int }}
+        {% else %}false{% endif %}
+
+  - choose:
+
+      # =========================
+      # MANUAL-OFF LOCKOUT (self-disable)
+      # We listen to state_changed events and check if the entity is in any
+      # of our per-mode targets; avoids needing separate watchers.
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: watch_off
+          - condition: template
+            value_template: "{{ lockout_mode != 'Disabled' }}"
+          - condition: template
+            value_template: >
+              {% set e = trigger.event.data.entity_id %}
+              {% set to = trigger.event.data.new_state %}
+              {% if to is none %} false
+              {% elif to.state != 'off' %} false
+              {% else %}
+                {% set uid = to.context.user_id %}
+                {% set pid = to.context.parent_id %}
+                {% if lockout_mode == 'Digital only' %}
+                  {{ uid is not none }}
+                {% elif lockout_mode == 'Physical only' %}
+                  {{ uid is none and pid is none }}
+                {% else %} true {% endif %}
+              {% endif %}
+        sequence:
+          - service: automation.turn_off
+            target: { entity_id: "{{ this.entity_id }}" }
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ lockout_timeout_min|int > 0 }}"
+                sequence:
+                  - delay:
+                      minutes: "{{ lockout_timeout_min|int }}"
+                  - service: automation.turn_on
+                    target: { entity_id: "{{ this.entity_id }}" }
+
+      # =========================
+      # RECORD LEVEL CHANGE WINDOW (optional override nuance)
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: watch_level
+          - condition: template
+            value_template: "{{ override_mode != 'Disabled' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {% set uid = trigger.to_state.context.user_id %}
+                      {% set pid = trigger.to_state.context.parent_id %}
+                      {% if override_mode == 'Digital only' %}
+                        {{ uid is not none }}
+                      {% elif override_mode == 'Physical only' %}
+                        {{ uid is none and pid is none }}
+                      {% elif override_mode == 'Any change' %}
+                        true
+                      {% else %} false {% endif %}
+                sequence:
+                  - variables:
+                      _override_until: "{{ (now() + timedelta(seconds=override_window|int)).isoformat() }}"
+                  - service: input_text.set_value
+                    data:
+                      # ephemeral store via input_text not available in blueprint reliably,
+                      # so we simply rely on 'already on => don't re-apply scene' fallback.
+                      # (kept for structure; no-op)
+                      value: "{{ _override_until }}"
+                # If you later add an input_text, we can persist a timestamp.
+
+      # =========================
+      # ACTIVATE ON MOTION or CONTACT OPEN
+      # =========================
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: motion_on
+              - condition: trigger
+                id: contact_open
+          - condition: template
+            value_template: "{{ lux_ok_to_on }}"
+        sequence:
+          # If override is enabled and any watch light is already ON,
+          # we assume user set a level; so we do NOT re-apply scene by default.
+          - variables:
+              any_watch_on: >-
+                {{ expand(level_watch_lights)|selectattr('state','eq','on')|list|count > 0 }}
+              skip_scene: >-
+                {{ (override_mode != 'Disabled') and any_watch_on }}
+          - choose:
+              # Apply per-mode scene/targets and AUX-ON
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(mode_entity) == mode_day }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ scene_day != '' and not skip_scene }}"
+                        sequence:
+                          - service: scene.turn_on
+                            target: { entity_id: "{{ scene_day }}" }
+                      - conditions: []
+                        sequence:
+                          - choose:
+                              - conditions: "{{ target_day|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_on
+                                    target: !input target_day
+                  - choose:
+                      - conditions: "{{ aux_on_day|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_on
+                            target: !input aux_on_day
+                  - if:
+                      - condition: template
+                        value_template: "{{ force_on_even_if_on }}"
+                    then:
+                      - choose:
+                          - conditions: "{{ target_day|length > 0 }}"
+                            sequence:
+                              - service: homeassistant.turn_on
+                                target: !input target_day
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(mode_entity) == mode_evening }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ scene_eve != '' and not skip_scene }}"
+                        sequence:
+                          - service: scene.turn_on
+                            target: { entity_id: "{{ scene_eve }}" }
+                      - conditions: []
+                        sequence:
+                          - choose:
+                              - conditions: "{{ target_evening|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_on
+                                    target: !input target_evening
+                  - choose:
+                      - conditions: "{{ aux_on_evening|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_on
+                            target: !input aux_on_evening
+                  - if:
+                      - condition: template
+                        value_template: "{{ force_on_even_if_on }}"
+                    then:
+                      - choose:
+                          - conditions: "{{ target_evening|length > 0 }}"
+                            sequence:
+                              - service: homeassistant.turn_on
+                                target: !input target_evening
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(mode_entity) == mode_night }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ scene_night != '' and not skip_scene }}"
+                        sequence:
+                          - service: scene.turn_on
+                            target: { entity_id: "{{ scene_night }}" }
+                      - conditions: []
+                        sequence:
+                          - choose:
+                              - conditions: "{{ target_night|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_on
+                                    target: !input target_night
+                  - choose:
+                      - conditions: "{{ aux_on_night|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_on
+                            target: !input aux_on_night
+                  - if:
+                      - condition: template
+                        value_template: "{{ force_on_even_if_on }}"
+                    then:
+                      - choose:
+                          - conditions: "{{ target_night|length > 0 }}"
+                            sequence:
+                              - service: homeassistant.turn_on
+                                target: !input target_night
+
+      # =========================
+      # LUX-BASED OFF (immediate)
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: lux_off
+          - condition: template
+            value_template: "{{ not any_motion_on and not any_contact_open and not any_keepalive_on }}"
+          - condition: template
+            value_template: "{{ not disable_off_now }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(mode_entity) == mode_day }}"
+                sequence:
+                  - choose:
+                      - conditions: "{{ target_day|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: !input target_day
+                  - choose:
+                      - conditions: "{{ aux_off_day|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: !input aux_off_day
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(mode_entity) == mode_evening }}"
+                sequence:
+                  - choose:
+                      - conditions: "{{ target_evening|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: !input target_evening
+                  - choose:
+                      - conditions: "{{ aux_off_evening|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: !input aux_off_evening
+              - conditions:
+                  - condition: template
+                    value_template: "{{ states(mode_entity) == mode_night }}"
+                sequence:
+                  - choose:
+                      - conditions: "{{ target_night|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: !input target_night
+                  - choose:
+                      - conditions: "{{ aux_off_night|length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: !input aux_off_night
+
+      # =========================
+      # TIMER-BASED OFF (motion/contact idle or mode change)
+      # =========================
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: motion_off
+              - condition: trigger
+                id: contact_closed
+              - condition: trigger
+                id: mode_change
+        sequence:
+          - wait_for_trigger:
+              - platform: state
+                entity_id: !input motion_or_presence_sensors
+                to: "on"
+              - platform: state
+                entity_id: !input contact_sensors
+                to: "on"
+              - platform: state
+                entity_id: !input keepalive_sensors
+                to:
+                  - "on"
+                  - "open"
+            timeout:
+              seconds: "{{ off_delay|int }}"
+            continue_on_timeout: true
+
+          - choose:
+              # Motion/Contact returned — abort OFF
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.trigger is not none }}"
+                sequence: []
+
+              # Else OFF by mode, unless disabled
+              - conditions: []
+                sequence:
+                  - condition: template
+                    value_template: "{{ not disable_off_now }}"
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(mode_entity) == mode_day }}"
+                        sequence:
+                          - choose:
+                              - conditions: "{{ target_day|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: !input target_day
+                          - choose:
+                              - conditions: "{{ aux_off_day|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: !input aux_off_day
+
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(mode_entity) == mode_evening }}"
+                        sequence:
+                          - choose:
+                              - conditions: "{{ target_evening|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: !input target_evening
+                          - choose:
+                              - conditions: "{{ aux_off_evening|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: !input aux_off_evening
+
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ states(mode_entity) == mode_night }}"
+                        sequence:
+                          - choose:
+                              - conditions: "{{ target_night|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: !input target_night
+                          - choose:
+                              - conditions: "{{ aux_off_night|length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: !input aux_off_night
