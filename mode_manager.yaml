@@ -460,47 +460,45 @@ trigger:
   - platform: time
     at: !input morning_time
     id: "morning_time"
-    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: template
-    value_template: "{{ now().strftime('%H:%M') == (as_datetime(state_attr('sun.sun', 'next_rising')) + timedelta(minutes=sunrise_offset)).strftime('%H:%M') }}"
+    value_template: >
+      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=sunrise_offset) %}
+      {{ now().strftime('%H:%M') == target.strftime('%H:%M') }}
     id: "sunrise"
-    enabled: "{{ enable_time_modes and enable_morning_mode and morning_trigger_type in ['sunrise', 'earlier', 'later'] }}"
   
   # Evening Mode triggers
   - platform: time
     at: !input evening_time
     id: "evening_time"
-    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: template
-    value_template: "{{ now().strftime('%H:%M') == (as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=sunset_offset)).strftime('%H:%M') }}"
+    value_template: >
+      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=sunset_offset) %}
+      {{ now().strftime('%H:%M') == target.strftime('%H:%M') }}
     id: "sunset"
-    enabled: "{{ enable_time_modes and enable_evening_mode and evening_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
   # Night Mode triggers
   - platform: time
     at: !input night_time
     id: "night_time"
-    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['time', 'earlier', 'later'] }}"
   
   - platform: template
-    value_template: "{{ now().strftime('%H:%M') == (as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=night_sunset_offset)).strftime('%H:%M') }}"
+    value_template: >
+      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=night_sunset_offset) %}
+      {{ now().strftime('%H:%M') == target.strftime('%H:%M') }}
     id: "night_sunset"
-    enabled: "{{ enable_time_modes and enable_night_mode and night_trigger_type in ['sunset', 'earlier', 'later'] }}"
   
   # Presence triggers
   - platform: state
     entity_id: !input presence_trackers
     from: "home"
     id: "presence_away"
-    enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
   
   - platform: state
     entity_id: !input presence_trackers
     to: "home"
     id: "presence_home"
-    enabled: "{{ enable_presence_modes and presence_trackers | default([]) | length > 0 }}"
   
   
   # Startup trigger
@@ -541,7 +539,7 @@ action:
               - "morning_time"
               - "sunrise"
           - condition: template
-            value_template: "{{ enable_morning_mode }}"
+            value_template: "{{ enable_time_modes and enable_morning_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
@@ -569,7 +567,7 @@ action:
                 {{ trigger_id == 'sunrise' }}
               {% elif trigger_type == 'earlier' %}
                 {% set fixed_time = today_at(morning_time) %}
-                {% set sunrise_time = as_datetime(state_attr('sun.sun', 'next_rising')) + timedelta(minutes=sunrise_offset) %}
+                {% set sunrise_time = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=sunrise_offset) %}
                 {% if trigger_id == 'morning_time' %}
                   {{ fixed_time <= sunrise_time }}
                 {% elif trigger_id == 'sunrise' %}
@@ -577,7 +575,7 @@ action:
                 {% endif %}
               {% elif trigger_type == 'later' %}
                 {% set fixed_time = today_at(morning_time) %}
-                {% set sunrise_time = as_datetime(state_attr('sun.sun', 'next_rising')) + timedelta(minutes=sunrise_offset) %}
+                {% set sunrise_time = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=sunrise_offset) %}
                 {% if trigger_id == 'morning_time' %}
                   {{ fixed_time >= sunrise_time }}
                 {% elif trigger_id == 'sunrise' %}
@@ -598,7 +596,7 @@ action:
               - "evening_time"
               - "sunset"
           - condition: template
-            value_template: "{{ enable_evening_mode }}"
+            value_template: "{{ enable_time_modes and enable_evening_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
@@ -626,7 +624,7 @@ action:
                 {{ trigger_id == 'sunset' }}
               {% elif trigger_type == 'earlier' %}
                 {% set fixed_time = today_at(evening_time) %}
-                {% set sunset_time = as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=sunset_offset) %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=sunset_offset) %}
                 {% if trigger_id == 'evening_time' %}
                   {{ fixed_time <= sunset_time }}
                 {% elif trigger_id == 'sunset' %}
@@ -634,7 +632,7 @@ action:
                 {% endif %}
               {% elif trigger_type == 'later' %}
                 {% set fixed_time = today_at(evening_time) %}
-                {% set sunset_time = as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=sunset_offset) %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=sunset_offset) %}
                 {% if trigger_id == 'evening_time' %}
                   {{ fixed_time >= sunset_time }}
                 {% elif trigger_id == 'sunset' %}
@@ -655,7 +653,7 @@ action:
               - "night_time"
               - "night_sunset"
           - condition: template
-            value_template: "{{ enable_night_mode }}"
+            value_template: "{{ enable_time_modes and enable_night_mode }}"
           - condition: template
             value_template: "{{ current_mode not in skip_mode_list }}"
           - condition: template
@@ -683,7 +681,7 @@ action:
                 {{ trigger_id == 'night_sunset' }}
               {% elif trigger_type == 'earlier' %}
                 {% set fixed_time = today_at(night_time) %}
-                {% set sunset_time = as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=night_sunset_offset) %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=night_sunset_offset) %}
                 {% if trigger_id == 'night_time' %}
                   {{ fixed_time <= sunset_time }}
                 {% elif trigger_id == 'night_sunset' %}
@@ -691,7 +689,7 @@ action:
                 {% endif %}
               {% elif trigger_type == 'later' %}
                 {% set fixed_time = today_at(night_time) %}
-                {% set sunset_time = as_datetime(state_attr('sun.sun', 'next_setting')) + timedelta(minutes=night_sunset_offset) %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=night_sunset_offset) %}
                 {% if trigger_id == 'night_time' %}
                   {{ fixed_time >= sunset_time }}
                 {% elif trigger_id == 'night_sunset' %}
@@ -711,6 +709,8 @@ action:
       - conditions:
           - condition: trigger
             id: "presence_away"
+          - condition: template
+            value_template: "{{ enable_presence_modes }}"
           - condition: template
             value_template: >
               {% set trackers = presence_trackers %}
@@ -746,6 +746,8 @@ action:
           - condition: trigger
             id: "presence_home"
           - condition: template
+            value_template: "{{ enable_presence_modes }}"
+          - condition: template
             value_template: "{{ current_mode == away_mode }}"
           - condition: template
             value_template: >
@@ -764,7 +766,7 @@ action:
           - choose:
               - conditions:
                   - condition: template
-                    value_template: "{{ return_from_away_mode == 'time_based' }}"
+                    value_template: "{{ enable_presence_modes and return_from_away_mode == 'time_based' }}"
                 sequence:
                   - service: input_select.select_option
                     target:
