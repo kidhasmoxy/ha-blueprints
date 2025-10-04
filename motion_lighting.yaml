@@ -1,5 +1,5 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Targets + AUX (v6.1, sections)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Targets + AUX (v6.2, sections)"
   description: >
     Hubitat-style motion lighting with collapsible setup sections.
     • Per-mode: optional Scene OR Targets + (brightness/color) for Targets
@@ -12,6 +12,9 @@ blueprint:
     min_version: "2024.6.0"
 
   input:
+    # =========================
+    # Activation Sensors
+    # =========================
     activation:
       name: "Activation sensors"
       icon: mdi:motion-sensor
@@ -54,6 +57,9 @@ blueprint:
               filter:
                 - domain: binary_sensor
 
+    # =========================
+    # Lux Conditions
+    # =========================
     lux:
       name: "Lux conditions"
       icon: mdi:weather-sunny-alert
@@ -84,6 +90,9 @@ blueprint:
               unit_of_measurement: lx
               mode: box
 
+    # =========================
+    # Modes / Per-Mode Setup
+    # =========================
     modes:
       name: "Modes & per-mode setup"
       icon: mdi:theme-light-dark
@@ -105,6 +114,7 @@ blueprint:
           default: Night
           selector: { text: {} }
 
+    # ---- Day section ----
     mode_day_section:
       name: "Mode: Day"
       icon: mdi:white-balance-sunny
@@ -116,8 +126,12 @@ blueprint:
           selector: { entity: { filter: [{ domain: scene }] } }
         target_day:
           name: "Targets (used if no Scene)"
-          default: []
-          selector: { target: { entity: {} } }
+          description: Lights only (areas/devices/light groups ok)
+          default: {}
+          selector:
+            target:
+              entity:
+                domain: light
         day_brightness:
           name: "Brightness % (for Targets)"
           description: Used only when a Scene isn’t set.
@@ -130,21 +144,23 @@ blueprint:
         day_rgb:
           name: "RGB color (optional)"
           description: If set, overrides Kelvin.
-          default: [0, 0, 0]
-          selector: { object: {} }
+          default: []
+          selector:
+            color_rgb:
         aux_on_day:
           name: "AUX-ON (also turn on)"
-          default: []
+          default: {}
           selector: { target: { entity: {} } }
         aux_off_day:
           name: "AUX-OFF (also turn off)"
-          default: []
+          default: {}
           selector: { target: { entity: {} } }
         day_off_delay:
           name: "Off-delay seconds"
           default: 900
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
+    # ---- Evening section ----
     mode_evening_section:
       name: "Mode: Evening"
       icon: mdi:weather-sunset
@@ -156,8 +172,12 @@ blueprint:
           selector: { entity: { filter: [{ domain: scene }] } }
         target_evening:
           name: "Targets (used if no Scene)"
-          default: []
-          selector: { target: { entity: {} } }
+          description: Lights only (areas/devices/light groups ok)
+          default: {}
+          selector:
+            target:
+              entity:
+                domain: light
         evening_brightness:
           name: "Brightness % (for Targets)"
           default: 100
@@ -168,21 +188,23 @@ blueprint:
           selector: { number: { min: 0, max: 6500, step: 50 } }
         evening_rgb:
           name: "RGB color (optional)"
-          default: [0, 0, 0]
-          selector: { object: {} }
+          default: []
+          selector:
+            color_rgb:
         aux_on_evening:
           name: "AUX-ON (also turn on)"
-          default: []
+          default: {}
           selector: { target: { entity: {} } }
         aux_off_evening:
           name: "AUX-OFF (also turn off)"
-          default: []
+          default: {}
           selector: { target: { entity: {} } }
         evening_off_delay:
           name: "Off-delay seconds"
           default: 900
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
+    # ---- Night section ----
     mode_night_section:
       name: "Mode: Night"
       icon: mdi:weather-night
@@ -194,8 +216,12 @@ blueprint:
           selector: { entity: { filter: [{ domain: scene }] } }
         target_night:
           name: "Targets (used if no Scene)"
-          default: []
-          selector: { target: { entity: {} } }
+          description: Lights only (areas/devices/light groups ok)
+          default: {}
+          selector:
+            target:
+              entity:
+                domain: light
         night_brightness:
           name: "Brightness % (for Targets)"
           default: 10
@@ -206,21 +232,25 @@ blueprint:
           selector: { number: { min: 0, max: 6500, step: 50 } }
         night_rgb:
           name: "RGB color (optional)"
-          default: [0, 0, 0]
-          selector: { object: {} }
+          default: []
+          selector:
+            color_rgb:
         aux_on_night:
           name: "AUX-ON (also turn on)"
-          default: []
+          default: {}
           selector: { target: { entity: {} } }
         aux_off_night:
           name: "AUX-OFF (also turn off)"
-          default: []
+          default: {}
           selector: { target: { entity: {} } }
         night_off_delay:
           name: "Off-delay seconds"
           default: 60
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
+    # =========================
+    # Lockout & Override
+    # =========================
     lockout_override:
       name: "Lockout & override"
       icon: mdi:account-cancel
@@ -256,6 +286,9 @@ blueprint:
               filter:
                 - domain: light
 
+    # =========================
+    # Misc
+    # =========================
     misc:
       name: "Misc options"
       icon: mdi:tune
@@ -270,6 +303,7 @@ blueprint:
           default: ""
           selector: { entity: { filter: [{ domain: input_boolean }] } }
 
+# ====== Runtime
 mode: restart
 
 variables:
@@ -279,17 +313,21 @@ variables:
   lux_entity: !input lux_sensor
   on_lux_max: !input on_lux_max
   off_lux_min: !input off_lux_min
+
   mode_entity: !input mode_helper
   mode_day: !input mode_day_value
   mode_eve: !input mode_evening_value
   mode_ngt: !input mode_night_value
   mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+
   scene_day: !input scene_day
   scene_eve: !input scene_evening
   scene_ngt: !input scene_night
+
   target_day: !input target_day
   target_eve: !input target_evening
   target_ngt: !input target_night
+
   day_bri: !input day_brightness
   eve_bri: !input evening_brightness
   ngt_bri: !input night_brightness
@@ -299,12 +337,14 @@ variables:
   day_rgb: !input day_rgb
   eve_rgb: !input evening_rgb
   ngt_rgb: !input night_rgb
+
   aux_on_day: !input aux_on_day
   aux_on_eve: !input aux_on_evening
   aux_on_ngt: !input aux_on_night
   aux_off_day: !input aux_off_day
   aux_off_eve: !input aux_off_evening
   aux_off_ngt: !input aux_off_night
+
   day_off: !input day_off_delay
   eve_off: !input evening_off_delay
   ngt_off: !input night_off_delay
@@ -314,14 +354,18 @@ variables:
     {% elif m == mode_eve %}{{ eve_off }}
     {% elif m == mode_ngt %}{{ ngt_off }}
     {% else %}{{ day_off }}{% endif %}
+
   lockout_mode: !input manual_off_lockout_mode
   lockout_timeout_min: !input manual_off_lockout_timeout
   override_mode: !input override_level_mode
   level_watch_lights: !input level_watch_lights
+
   force_on_even_if_on: !input force_on_even_if_on
   disable_off_bool: !input disable_off_via_boolean
 
+# ====== Triggers
 trigger:
+  # Activators
   - platform: state
     id: motion_on
     entity_id: !input motion_or_presence_sensors
@@ -330,6 +374,8 @@ trigger:
     id: contact_open
     entity_id: !input contact_sensors
     to: "on"
+
+  # Idle/closed (for timers)
   - platform: state
     id: motion_off
     entity_id: !input motion_or_presence_sensors
@@ -338,20 +384,30 @@ trigger:
     id: contact_closed
     entity_id: !input contact_sensors
     to: "off"
+
+  # Keep-alive
   - platform: state
     id: keepalive_on
     entity_id: !input keepalive_sensors
     to: ["on","open"]
+
+  # Mode change
   - platform: state
     id: mode_change
     entity_id: !input mode_helper
+
+  # Lux OFF threshold
   - platform: numeric_state
     id: lux_off
     entity_id: !input lux_sensor
     above: !input off_lux_min
+
+  # Watch OFF (for lockout)
   - platform: event
     id: watch_off
     event_type: state_changed
+
+  # Optional: watch brightness/CT changes (override nuance)
   - platform: state
     id: watch_level
     entity_id: !input level_watch_lights
@@ -360,6 +416,7 @@ trigger:
 
 condition: []
 
+# ====== Actions
 action:
   - variables:
       disable_off_now: "{{ is_state(disable_off_bool,'on') if disable_off_bool else false }}"
@@ -372,12 +429,19 @@ action:
         {% else %}true{% endif %}
 
   - choose:
-      # Manual-OFF lockout (self-disable)
+
+      # ===== Manual-OFF lockout via self-disable (no helpers)
       - conditions:
           - condition: trigger
             id: watch_off
           - condition: template
             value_template: "{{ lockout_mode != 'Disabled' }}"
+          # only respond to LIGHTS turning off (avoid unrelated entities)
+          - condition: template
+            value_template: >
+              {{ trigger.event and trigger.event.data and
+                 trigger.event.data.entity_id is string and
+                 trigger.event.data.entity_id.startswith('light.') }}
           - condition: template
             value_template: >
               {% set ns = trigger.event.data.new_state %}
@@ -402,7 +466,7 @@ action:
               - service: automation.turn_on
                 target: { entity_id: "{{ this.entity_id }}" }
 
-      # Level-change watch (placeholder—simple override handled below)
+      # ===== Optional level-change watch (simple override handled below)
       - conditions:
           - condition: trigger
             id: watch_level
@@ -410,7 +474,7 @@ action:
             value_template: "{{ override_mode != 'Disabled' }}"
         sequence: []
 
-      # Activate on motion/contact open (respect lux)
+      # ===== Activate on motion/contact open (respect lux)
       - conditions:
           - condition: or
             conditions:
@@ -426,7 +490,7 @@ action:
               skip_apply: "{{ override_mode != 'Disabled' and any_watch_on }}"
           - choose:
 
-              # Day
+              # --- Day ---
               - conditions: "{{ states(mode_entity) == mode_day }}"
                 sequence:
                   - choose:
@@ -439,20 +503,24 @@ action:
                       - conditions: []
                         sequence:
                           - choose:
-                              - conditions: "{{ target_day|length > 0 }}"
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ target_day|length > 0 }}"
                                 sequence:
                                   - service: light.turn_on
                                     target: !input target_day
                                     data:
                                       brightness_pct: "{{ day_bri|int }}"
                                       rgb_color: >-
-                                        {% set r = day_rgb|list %}
-                                        {% if r and (r|sum) > 0 %} {{ r }} {% else %} {{ null }} {% endif %}
+                                        {% if (day_rgb | length) > 0 %} {{ day_rgb }} {% else %} {{ null }} {% endif %}
                                       color_temp_kelvin: >-
-                                        {% set r = day_rgb|list %}
-                                        {% if r and (r|sum) > 0 %} {{ null }}
-                                        {% elif day_kelvin|int > 0 %} {{ day_kelvin|int }}
-                                        {% else %} {{ null }} {% endif %}
+                                        {% if (day_rgb | length) > 0 %}
+                                          {{ null }}
+                                        {% elif day_kelvin|int > 0 %}
+                                          {{ day_kelvin|int }}
+                                        {% else %}
+                                          {{ null }}
+                                        {% endif %}
                   - choose:
                       - conditions: "{{ aux_on_day|length > 0 }}"
                         sequence:
@@ -468,7 +536,7 @@ action:
                               - service: homeassistant.turn_on
                                 target: !input target_day
 
-              # Evening
+              # --- Evening ---
               - conditions: "{{ states(mode_entity) == mode_eve }}"
                 sequence:
                   - choose:
@@ -481,20 +549,24 @@ action:
                       - conditions: []
                         sequence:
                           - choose:
-                              - conditions: "{{ target_evening|length > 0 }}"
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ target_evening|length > 0 }}"
                                 sequence:
                                   - service: light.turn_on
                                     target: !input target_evening
                                     data:
-                                      brightness_pct: "{{ evening_brightness|int }}"
+                                      brightness_pct: "{{ eve_bri|int }}"
                                       rgb_color: >-
-                                        {% set r = evening_rgb|list %}
-                                        {% if r and (r|sum) > 0 %} {{ r }} {% else %} {{ null }} {% endif %}
+                                        {% if (evening_rgb | length) > 0 %} {{ evening_rgb }} {% else %} {{ null }} {% endif %}
                                       color_temp_kelvin: >-
-                                        {% set r = evening_rgb|list %}
-                                        {% if r and (r|sum) > 0 %} {{ null }}
-                                        {% elif evening_kelvin|int > 0 %} {{ evening_kelvin|int }}
-                                        {% else %} {{ null }} {% endif %}
+                                        {% if (evening_rgb | length) > 0 %}
+                                          {{ null }}
+                                        {% elif eve_kelvin|int > 0 %}
+                                          {{ eve_kelvin|int }}
+                                        {% else %}
+                                          {{ null }}
+                                        {% endif %}
                   - choose:
                       - conditions: "{{ aux_on_evening|length > 0 }}"
                         sequence:
@@ -510,7 +582,7 @@ action:
                               - service: homeassistant.turn_on
                                 target: !input target_evening
 
-              # Night
+              # --- Night ---
               - conditions: "{{ states(mode_entity) == mode_ngt }}"
                 sequence:
                   - choose:
@@ -523,20 +595,24 @@ action:
                       - conditions: []
                         sequence:
                           - choose:
-                              - conditions: "{{ target_night|length > 0 }}"
+                              - conditions:
+                                  - condition: template
+                                    value_template: "{{ target_night|length > 0 }}"
                                 sequence:
                                   - service: light.turn_on
                                     target: !input target_night
                                     data:
-                                      brightness_pct: "{{ night_brightness|int }}"
+                                      brightness_pct: "{{ ngt_bri|int }}"
                                       rgb_color: >-
-                                        {% set r = night_rgb|list %}
-                                        {% if r and (r|sum) > 0 %} {{ r }} {% else %} {{ null }} {% endif %}
+                                        {% if (night_rgb | length) > 0 %} {{ night_rgb }} {% else %} {{ null }} {% endif %}
                                       color_temp_kelvin: >-
-                                        {% set r = night_rgb|list %}
-                                        {% if r and (r|sum) > 0 %} {{ null }}
-                                        {% elif night_kelvin|int > 0 %} {{ night_kelvin|int }}
-                                        {% else %} {{ null }} {% endif %}
+                                        {% if (night_rgb | length) > 0 %}
+                                          {{ null }}
+                                        {% elif ngt_kelvin|int > 0 %}
+                                          {{ ngt_kelvin|int }}
+                                        {% else %}
+                                          {{ null }}
+                                        {% endif %}
                   - choose:
                       - conditions: "{{ aux_on_night|length > 0 }}"
                         sequence:
@@ -552,7 +628,7 @@ action:
                               - service: homeassistant.turn_on
                                 target: !input target_night
 
-      # Lux-based OFF (immediate)
+      # ===== Lux-based OFF (immediate)
       - conditions:
           - condition: trigger
             id: lux_off
@@ -600,7 +676,7 @@ action:
                           - service: homeassistant.turn_off
                             target: !input target_night
 
-      # Timer-based OFF
+      # ===== Timer-based OFF (motion/contact idle or mode change)
       - conditions:
           - condition: or
             conditions:
