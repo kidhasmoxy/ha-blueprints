@@ -463,7 +463,8 @@ trigger:
   
   - platform: template
     value_template: >
-      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=sunrise_offset) %}
+      {% set offset = sunrise_offset | default(0) | int %}
+      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=offset) %}
       {{ now().strftime('%H:%M') == target.strftime('%H:%M') }}
     id: "sunrise"
   
@@ -474,7 +475,8 @@ trigger:
   
   - platform: template
     value_template: >
-      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=sunset_offset) %}
+      {% set offset = sunset_offset | default(0) | int %}
+      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=offset) %}
       {{ now().strftime('%H:%M') == target.strftime('%H:%M') }}
     id: "sunset"
   
@@ -485,7 +487,8 @@ trigger:
   
   - platform: template
     value_template: >
-      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=night_sunset_offset) %}
+      {% set offset = night_sunset_offset | default(240) | int %}
+      {% set target = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=offset) %}
       {{ now().strftime('%H:%M') == target.strftime('%H:%M') }}
     id: "night_sunset"
   
@@ -567,7 +570,8 @@ action:
                 {{ trigger_id == 'sunrise' }}
               {% elif trigger_type == 'earlier' %}
                 {% set fixed_time = today_at(morning_time) %}
-                {% set sunrise_time = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=sunrise_offset) %}
+                {% set offset = sunrise_offset | default(0) | int %}
+                {% set sunrise_time = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=offset) %}
                 {% if trigger_id == 'morning_time' %}
                   {{ fixed_time <= sunrise_time }}
                 {% elif trigger_id == 'sunrise' %}
@@ -575,7 +579,8 @@ action:
                 {% endif %}
               {% elif trigger_type == 'later' %}
                 {% set fixed_time = today_at(morning_time) %}
-                {% set sunrise_time = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=sunrise_offset) %}
+                {% set offset = sunrise_offset | default(0) | int %}
+                {% set sunrise_time = as_local(as_datetime(state_attr('sun.sun', 'next_rising'))) + timedelta(minutes=offset) %}
                 {% if trigger_id == 'morning_time' %}
                   {{ fixed_time >= sunrise_time }}
                 {% elif trigger_id == 'sunrise' %}
@@ -624,7 +629,8 @@ action:
                 {{ trigger_id == 'sunset' }}
               {% elif trigger_type == 'earlier' %}
                 {% set fixed_time = today_at(evening_time) %}
-                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=sunset_offset) %}
+                {% set offset = sunset_offset | default(0) | int %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=offset) %}
                 {% if trigger_id == 'evening_time' %}
                   {{ fixed_time <= sunset_time }}
                 {% elif trigger_id == 'sunset' %}
@@ -632,7 +638,8 @@ action:
                 {% endif %}
               {% elif trigger_type == 'later' %}
                 {% set fixed_time = today_at(evening_time) %}
-                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=sunset_offset) %}
+                {% set offset = sunset_offset | default(0) | int %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=offset) %}
                 {% if trigger_id == 'evening_time' %}
                   {{ fixed_time >= sunset_time }}
                 {% elif trigger_id == 'sunset' %}
@@ -681,7 +688,8 @@ action:
                 {{ trigger_id == 'night_sunset' }}
               {% elif trigger_type == 'earlier' %}
                 {% set fixed_time = today_at(night_time) %}
-                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=night_sunset_offset) %}
+                {% set offset = night_sunset_offset | default(240) | int %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=offset) %}
                 {% if trigger_id == 'night_time' %}
                   {{ fixed_time <= sunset_time }}
                 {% elif trigger_id == 'night_sunset' %}
@@ -689,7 +697,8 @@ action:
                 {% endif %}
               {% elif trigger_type == 'later' %}
                 {% set fixed_time = today_at(night_time) %}
-                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=night_sunset_offset) %}
+                {% set offset = night_sunset_offset | default(240) | int %}
+                {% set sunset_time = as_local(as_datetime(state_attr('sun.sun', 'next_setting'))) + timedelta(minutes=offset) %}
                 {% if trigger_id == 'night_time' %}
                   {{ fixed_time >= sunset_time }}
                 {% elif trigger_id == 'night_sunset' %}
