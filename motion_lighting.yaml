@@ -1,5 +1,5 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Targets + AUX (v6.4.1, minute-based watch window)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Targets + AUX (v6.4.2, minute-based & validation-safe)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Per-mode: optional Scene OR Targets (+ brightness/color for Targets)
@@ -9,14 +9,12 @@ blueprint:
         - Manual OFF ⇒ Lockout (ends by Timeout / Mode change / either)
         - Level/CT/Color change ⇒ Capture override (reuse levels on motion until override ends)
     • Lockout/Override use optional timer helpers (restart-safe); fallback self-disable only if no timer chosen.
+    • Validation-safe: all scene activations use data.entity_id (no target.entity_id), avoiding save-time entity checks.
   domain: automation
   homeassistant:
     min_version: "2024.6.0"
 
   input:
-    # =========================
-    # Activation Sensors
-    # =========================
     activation:
       name: "Activation sensors"
       icon: mdi:motion-sensor
@@ -59,9 +57,6 @@ blueprint:
               filter:
                 - domain: binary_sensor
 
-    # =========================
-    # Lux Conditions
-    # =========================
     lux:
       name: "Lux conditions"
       icon: mdi:weather-sunny-alert
@@ -92,9 +87,6 @@ blueprint:
               unit_of_measurement: lx
               mode: box
 
-    # =========================
-    # Modes & Labels
-    # =========================
     modes:
       name: "Modes & per-mode setup"
       icon: mdi:theme-light-dark
@@ -116,7 +108,6 @@ blueprint:
           default: Night
           selector: { text: {} }
 
-    # ---- Day section ----
     mode_day_section:
       name: "Mode: Day"
       icon: mdi:white-balance-sunny
@@ -161,7 +152,6 @@ blueprint:
           default: 900
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
-    # ---- Evening section ----
     mode_evening_section:
       name: "Mode: Evening"
       icon: mdi:weather-sunset
@@ -204,7 +194,6 @@ blueprint:
           default: 900
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
-    # ---- Night section ----
     mode_night_section:
       name: "Mode: Night"
       icon: mdi:weather-night
@@ -247,15 +236,11 @@ blueprint:
           default: 60
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
-    # =========================
-    # Watch Window, Lockout & Override (minutes)
-    # =========================
     lockout_override:
       name: "Watch window, lockout & override"
       icon: mdi:account-cancel
       collapsed: false
       input:
-        # --- Watch window (MINUTES) ---
         watch_window_minutes:
           name: "Watch window after activation (minutes)"
           description: "During this period: Manual OFF ⇒ Lockout; Level change ⇒ Capture override"
@@ -266,7 +251,6 @@ blueprint:
               max: 60
               step: 1
 
-        # --- Manual OFF ⇒ Lockout ---
         lockout_watch_lights:
           name: "Lights to watch for MANUAL-OFF"
           description: "If any is turned OFF during the watch window, start lockout."
@@ -286,12 +270,12 @@ blueprint:
               options: ["Digital only", "Physical only", "Any"]
         manual_off_lockout_timeout:
           name: "Lockout timeout (minutes)"
-          description: "1–20 minutes"
-          default: 5
+          description: "Range 1–120 minutes (1 min to 2 hours)"
+          default: 15
           selector:
             number:
               min: 1
-              max: 20
+              max: 120
               step: 1
         lockout_end_mode:
           name: "How does lockout end?"
@@ -309,7 +293,6 @@ blueprint:
               filter:
                 - domain: timer
 
-        # --- Level change ⇒ Override capture (no lockout) ---
         override_capture_lights:
           name: "Lights to watch for LEVEL changes (capture override)"
           description: "If a level/CT/color change happens during the watch window, snapshot it and reuse on motion."
@@ -351,9 +334,6 @@ blueprint:
               filter:
                 - domain: timer
 
-    # =========================
-    # Misc
-    # =========================
     misc:
       name: "Misc options"
       icon: mdi:tune
@@ -368,11 +348,9 @@ blueprint:
           default: ""
           selector: { entity: { filter: [{ domain: input_boolean }] } }
 
-# ====== Runtime
 mode: restart
 
 variables:
-  # Sensors & lux
   motion_list: !input motion_or_presence_sensors
   contacts_list: !input contact_sensors
   keepalive_list: !input keepalive_sensors
@@ -380,20 +358,20 @@ variables:
   on_lux_max: !input on_lux_max
   off_lux_min: !input off_lux_min
 
-  # Modes
   mode_entity: !input mode_helper
   mode_day: !input mode_day_value
   mode_eve: !input mode_evening_value
   mode_ngt: !input mode_night_value
   mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
 
-  # Per-mode scenes/targets/levels
   scene_day: !input scene_day
   scene_eve: !input scene_evening
   scene_ngt: !input scene_night
+
   target_day: !input target_day
   target_eve: !input target_evening
   target_ngt: !input target_night
+
   day_bri: !input day_brightness
   eve_bri: !input evening_brightness
   ngt_bri: !input night_brightness
@@ -403,6 +381,7 @@ variables:
   day_rgb: !input day_rgb
   eve_rgb: !input evening_rgb
   ngt_rgb: !input night_rgb
+
   aux_on_day: !input aux_on_day
   aux_on_eve: !input aux_on_evening
   aux_on_ngt: !input aux_on_night
@@ -410,7 +389,6 @@ variables:
   aux_off_eve: !input aux_off_evening
   aux_off_ngt: !input aux_off_night
 
-  # Off delays
   day_off: !input day_off_delay
   eve_off: !input evening_off_delay
   ngt_off: !input night_off_delay
@@ -421,7 +399,6 @@ variables:
     {% elif m == mode_ngt %}{{ ngt_off }}
     {% else %}{{ day_off }}{% endif %}
 
-  # Watch window & lockout (MINUTES)
   watch_window: !input watch_window_minutes
   lockout_watch: !input lockout_watch_lights
   lockout_mode: !input manual_off_lockout_mode
@@ -429,7 +406,6 @@ variables:
   lockout_end_mode: !input lockout_end_mode
   lockout_timer: !input lockout_timer
 
-  # Override capture (MINUTES)
   override_capture_lights: !input override_capture_lights
   override_change_source: !input override_change_source
   override_timeout_min: !input override_timeout_minutes
@@ -437,13 +413,10 @@ variables:
   override_timer: !input override_timer
   override_scene_id: "{{ (this.entity_id | replace('.','_')) ~ '_level_override' }}"
 
-  # Misc
   force_on_even_if_on: !input force_on_even_if_on
   disable_off_bool: !input disable_off_via_boolean
 
-# ====== Triggers
 trigger:
-  # Activators
   - platform: state
     id: motion_on
     entity_id: !input motion_or_presence_sensors
@@ -452,8 +425,6 @@ trigger:
     id: contact_open
     entity_id: !input contact_sensors
     to: "on"
-
-  # Idle/closed → for timer-based OFF
   - platform: state
     id: motion_off
     entity_id: !input motion_or_presence_sensors
@@ -462,8 +433,6 @@ trigger:
     id: contact_closed
     entity_id: !input contact_sensors
     to: "off"
-
-  # Keepalive
   - platform: state
     id: keepalive_on
     entity_id: !input keepalive_sensors
@@ -472,13 +441,9 @@ trigger:
     id: keepalive_open
     entity_id: !input keepalive_sensors
     to: "open"
-
-  # Mode change
   - platform: state
     id: mode_change
     entity_id: !input mode_helper
-
-  # Lux-based immediate OFF
   - platform: numeric_state
     id: lux_off
     entity_id: !input lux_sensor
@@ -486,7 +451,6 @@ trigger:
 
 condition: []
 
-# ====== Actions
 action:
   - variables:
       disable_off_now: "{{ is_state(disable_off_bool,'on') if disable_off_bool else false }}"
@@ -500,7 +464,6 @@ action:
 
   - choose:
 
-      # ==== Clear lockout/override on MODE CHANGE (if configured) ====
       - conditions:
           - condition: trigger
             id: mode_change
@@ -519,7 +482,6 @@ action:
                   - service: timer.cancel
                     target: { entity_id: !input override_timer }
 
-      # ==== Lux-based OFF (immediate) ====
       - conditions:
           - condition: trigger
             id: lux_off
@@ -566,7 +528,6 @@ action:
                           - service: homeassistant.turn_off
                             target: !input target_night
 
-      # ==== Activate on motion/contact open ====
       - conditions:
           - condition: or
             conditions:
@@ -576,13 +537,11 @@ action:
                 id: contact_open
           - condition: template
             value_template: "{{ lux_ok_to_on }}"
-          # Block while lockout timer is active (if provided)
           - condition: template
             value_template: >
               {% set lt = (lockout_timer | default('')) %}
               {{ not lt or is_state(lt, 'idle') }}
         sequence:
-          # If override timer is active, apply captured look and stop
           - choose:
               - conditions:
                   - condition: template
@@ -591,15 +550,13 @@ action:
                       {{ ot and is_state(ot, 'active') }}
                 sequence:
                   - service: scene.turn_on
-                    target:
+                    data:
                       entity_id: "scene.{{ override_scene_id }}"
                   - stop: "Applied override scene (timer active)"
             default: []
 
-          # --- Apply per-mode scene/targets ---
           - choose:
 
-              # Day
               - conditions: "{{ states(mode_entity) == mode_day }}"
                 sequence:
                   - choose:
@@ -608,7 +565,8 @@ action:
                             value_template: "{{ scene_day != '' }}"
                         sequence:
                           - service: scene.turn_on
-                            target: { entity_id: "{{ scene_day }}" }
+                            data:
+                              entity_id: "{{ scene_day }}"
                       - conditions:
                           - condition: template
                             value_template: "{{ target_day|length > 0 }}"
@@ -648,7 +606,6 @@ action:
                       - service: homeassistant.turn_on
                         target: !input target_day
 
-              # Evening
               - conditions: "{{ states(mode_entity) == mode_eve }}"
                 sequence:
                   - choose:
@@ -657,7 +614,8 @@ action:
                             value_template: "{{ scene_evening != '' }}"
                         sequence:
                           - service: scene.turn_on
-                            target: { entity_id: "{{ scene_evening }}" }
+                            data:
+                              entity_id: "{{ scene_evening }}"
                       - conditions:
                           - condition: template
                             value_template: "{{ target_evening|length > 0 }}"
@@ -697,7 +655,6 @@ action:
                       - service: homeassistant.turn_on
                         target: !input target_evening
 
-              # Night
               - conditions: "{{ states(mode_entity) == mode_ngt }}"
                 sequence:
                   - choose:
@@ -706,7 +663,8 @@ action:
                             value_template: "{{ scene_night != '' }}"
                         sequence:
                           - service: scene.turn_on
-                            target: { entity_id: "{{ scene_night }}" }
+                            data:
+                              entity_id: "{{ scene_night }}"
                       - conditions:
                           - condition: template
                             value_template: "{{ target_night|length > 0 }}"
@@ -746,7 +704,6 @@ action:
                       - service: homeassistant.turn_on
                         target: !input target_night
 
-          # === Start a watch window after activation (MINUTES) ===
           - wait_for_trigger:
               - platform: state
                 id: "manual_off"
@@ -762,11 +719,9 @@ action:
             continue_on_timeout: false
 
           - choose:
-              # --- Manual OFF detected → start lockout ---
               - conditions:
                   - condition: template
                     value_template: "{{ wait.trigger is not none and wait.trigger.id == 'manual_off' }}"
-                  # Source filter for lockout
                   - condition: template
                     value_template: >
                       {% set uid = wait.trigger.to_state.context.user_id %}
@@ -795,11 +750,9 @@ action:
                           - service: automation.turn_on
                             target: { entity_id: "{{ this.entity_id }}" }
 
-              # --- Level/CT/Color change → capture override (no lockout) ---
               - conditions:
                   - condition: template
                     value_template: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
-                  # Source filter for override capture
                   - condition: template
                     value_template: >
                       {% set uid = wait.trigger.to_state.context.user_id %}
@@ -824,7 +777,6 @@ action:
                             data:
                               duration: "{{ (override_timeout_min|int) * 60 }}"
 
-      # ==== Timer-based OFF (idle or mode change) ====
       - conditions:
           - condition: or
             conditions:
