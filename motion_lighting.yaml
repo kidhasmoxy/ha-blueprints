@@ -1,5 +1,5 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.4, camera force-on, validation-safe)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.5, camera force-on, debug & guards)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
@@ -10,6 +10,7 @@ blueprint:
         - Manual OFF ⇒ Lockout (ends by Timeout / Mode change / either)
         - Level/CT/Color change ⇒ Capture override (reuse levels on motion until override ends)
     • Lockout/Override use optional timer helpers (restart-safe). No service calls use `target:`; all use `data.entity_id`.
+    • Debug switch logs which mode branch ran and what was applied; guard prevents “hang” when nothing is configured for the mode.
   domain: automation
   homeassistant:
     min_version: "2024.6.0"
@@ -431,6 +432,10 @@ blueprint:
             entity:
               filter:
                 - domain: input_boolean
+        debug_logging:
+          name: "Enable debug logbook entries"
+          default: false
+          selector: { boolean: {} }
 
 # ====== Runtime
 mode: restart
@@ -532,6 +537,7 @@ variables:
   # Misc
   force_on_even_if_on: !input force_on_even_if_on
   disable_off_bool: !input disable_off_via_boolean
+  debug: !input debug_logging
 
 trigger:
   # Activators
@@ -681,6 +687,21 @@ action:
               {{ not lt or is_state(lt, 'idle') }}
         sequence:
 
+          # Debug: log active mode & settings
+          - choose:
+              - conditions: "{{ debug }}"
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: "MotionMode v6.4.5"
+                      message: >
+                        Mode='{{ states(mode_entity) }}' (labels: Day='{{ mode_day }}', Evening='{{ mode_eve }}', Night='{{ mode_ngt }}').
+                        lux_ok={{ lux_ok_to_on }}, force_cam_on={{ force_cam_on }}.
+                        Day scene='{{ scene_day }}' entities={{ entities_day|length }};
+                        Eve scene='{{ scene_eve }}' entities={{ entities_eve|length }};
+                        Ngt scene='{{ scene_ngt }}' entities={{ entities_ngt|length }}.
+                      entity_id: "{{ this.entity_id }}"
+
           # If override timer is active, apply captured look and stop
           - choose:
               - conditions: >
@@ -689,8 +710,37 @@ action:
                   - service: scene.turn_on
                     data:
                       entity_id: "scene.{{ override_scene_id }}"
+                  - choose:
+                      - conditions: "{{ debug }}"
+                        sequence:
+                          - service: logbook.log
+                            data:
+                              name: "MotionMode v6.4.5"
+                              message: "Applied OVERRIDE scene '{{ 'scene.' ~ override_scene_id }}' (timer active)."
+                              entity_id: "{{ this.entity_id }}"
                   - stop: "Applied override scene (timer active)"
             default: []
+
+          # --- SAFETY GUARD: if current mode has neither scene nor entities, log & stop (avoid hanging) ---
+          - choose:
+              - conditions: >
+                  {% set m = states(mode_entity) %}
+                  {{ (m == mode_day and (scene_day == '' and (entities_day|length) == 0)) or
+                     (m == mode_eve and (scene_eve == '' and (entities_eve|length) == 0)) or
+                     (m == mode_ngt and (scene_ngt == '' and (entities_ngt|length) == 0)) or
+                     (m not in [mode_day, mode_eve, mode_ngt]) }}
+                sequence:
+                  - choose:
+                      - conditions: "{{ debug }}"
+                        sequence:
+                          - service: logbook.log
+                            data:
+                              name: "MotionMode v6.4.5"
+                              message: >
+                                No scene/entities configured for current mode '{{ states(mode_entity) }}'
+                                (or mode label mismatch). Skipping watch window.
+                              entity_id: "{{ this.entity_id }}"
+                  - stop: "No targets for current mode"
 
           # --- Apply per-mode scene/entities ---
           - choose:
@@ -704,6 +754,14 @@ action:
                           - service: scene.turn_on
                             data:
                               entity_id: "{{ scene_day }}"
+                          - choose:
+                              - conditions: "{{ debug }}"
+                                sequence:
+                                  - service: logbook.log
+                                    data:
+                                      name: "MotionMode v6.4.5"
+                                      message: "DAY: Applied scene '{{ scene_day }}'"
+                                      entity_id: "{{ this.entity_id }}"
                       - conditions: "{{ entities_day | length > 0 }}"
                         sequence:
                           - choose:
@@ -727,12 +785,21 @@ action:
                                     data:
                                       entity_id: "{{ entities_day | join(',') }}"
                                       brightness_pct: "{{ day_bri|int }}"
+                          - choose:
+                              - conditions: "{{ debug }}"
+                                sequence:
+                                  - service: logbook.log
+                                    data:
+                                      name: "MotionMode v6.4.5"
+                                      message: "DAY: Turned on entities={{ entities_day|join(',') }}"
+                                      entity_id: "{{ this.entity_id }}"
                   - choose:
                       - conditions: "{{ aux_on_day_entities | length > 0 }}"
                         sequence:
                           - service: homeassistant.turn_on
                             data:
                               entity_id: "{{ aux_on_day_entities | join(',') }}"
+
                   - if:
                       - condition: template
                         value_template: "{{ force_on_even_if_on }}"
@@ -750,6 +817,14 @@ action:
                           - service: scene.turn_on
                             data:
                               entity_id: "{{ scene_evening }}"
+                          - choose:
+                              - conditions: "{{ debug }}"
+                                sequence:
+                                  - service: logbook.log
+                                    data:
+                                      name: "MotionMode v6.4.5"
+                                      message: "EVE: Applied scene '{{ scene_evening }}'"
+                                      entity_id: "{{ this.entity_id }}"
                       - conditions: "{{ entities_eve | length > 0 }}"
                         sequence:
                           - choose:
@@ -773,12 +848,22 @@ action:
                                     data:
                                       entity_id: "{{ entities_eve | join(',') }}"
                                       brightness_pct: "{{ eve_bri|int }}"
+                          - choose:
+                              - conditions: "{{ debug }}"
+                                sequence:
+                                  - service: logbook.log
+                                    data:
+                                      name: "MotionMode v6.4.5"
+                                      message: "EVE: Turned on entities={{ entities_eve|join(',') }}"
+                                      entity_id: "{{ this.entity_id }}"
+
                   - choose:
                       - conditions: "{{ aux_on_evening_entities | length > 0 }}"
                         sequence:
                           - service: homeassistant.turn_on
                             data:
                               entity_id: "{{ aux_on_evening_entities | join(',') }}"
+
                   - if:
                       - condition: template
                         value_template: "{{ force_on_even_if_on }}"
@@ -796,6 +881,14 @@ action:
                           - service: scene.turn_on
                             data:
                               entity_id: "{{ scene_night }}"
+                          - choose:
+                              - conditions: "{{ debug }}"
+                                sequence:
+                                  - service: logbook.log
+                                    data:
+                                      name: "MotionMode v6.4.5"
+                                      message: "NGT: Applied scene '{{ scene_night }}'"
+                                      entity_id: "{{ this.entity_id }}"
                       - conditions: "{{ entities_ngt | length > 0 }}"
                         sequence:
                           - choose:
@@ -819,12 +912,22 @@ action:
                                     data:
                                       entity_id: "{{ entities_ngt | join(',') }}"
                                       brightness_pct: "{{ ngt_bri|int }}"
+                          - choose:
+                              - conditions: "{{ debug }}"
+                                sequence:
+                                  - service: logbook.log
+                                    data:
+                                      name: "MotionMode v6.4.5"
+                                      message: "NGT: Turned on entities={{ entities_ngt|join(',') }}"
+                                      entity_id: "{{ this.entity_id }}"
+
                   - choose:
                       - conditions: "{{ aux_on_night_entities | length > 0 }}"
                         sequence:
                           - service: homeassistant.turn_on
                             data:
                               entity_id: "{{ aux_on_night_entities | join(',') }}"
+
                   - if:
                       - condition: template
                         value_template: "{{ force_on_even_if_on }}"
