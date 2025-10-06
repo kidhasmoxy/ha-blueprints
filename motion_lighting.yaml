@@ -1,10 +1,11 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.3, validation-safe)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.4, camera force-on, validation-safe)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
     • Activators: motion/occupancy/presence and/or contact; plus keep-alive
-    • Per-mode AUX-ON/AUX-OFF (explicit entity lists), OFF-delays, Lux ON/OFF gates
+    • Per-mode AUX-ON/AUX-OFF (entity lists), OFF-delays, Lux ON/OFF gates
+    • Camera force-on: value/binary sensors can bypass the lux ON gate
     • Watch window (minutes) after activation:
         - Manual OFF ⇒ Lockout (ends by Timeout / Mode change / either)
         - Level/CT/Color change ⇒ Capture override (reuse levels on motion until override ends)
@@ -60,10 +61,10 @@ blueprint:
                 - domain: binary_sensor
 
     # =========================
-    # Lux Conditions
+    # Lux & Camera Force-ON
     # =========================
     lux:
-      name: "Lux conditions"
+      name: "Lux conditions (with camera force-on)"
       icon: mdi:weather-sunny-alert
       collapsed: true
       input:
@@ -93,6 +94,39 @@ blueprint:
               max: 5000
               unit_of_measurement: lx
               mode: box
+
+        # Camera / “night mode” force-ON gates
+        force_on_value_sensors:
+          name: "Force-ON: value sensors"
+          description: "Sensors whose *value* forces ON (e.g., camera color mode)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: sensor
+        force_on_match_values:
+          name: "Match values (comma-separated)"
+          description: "Case-insensitive values that force ON (e.g., black and white,bw,night)"
+          default: "black and white,bw,night"
+          selector: { text: {} }
+        force_on_binary_sensors:
+          name: "Force-ON: binary sensors"
+          description: "Binary sensors that force ON when at the chosen state (e.g., camera night mode)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+        force_on_binary_state:
+          name: "Binary force-ON state"
+          description: "Which state of the binary sensors should force ON"
+          default: "on"
+          selector:
+            select:
+              mode: dropdown
+              options: ["on", "off"]
 
     # =========================
     # Modes & Labels
@@ -410,6 +444,31 @@ variables:
   on_lux_max: !input on_lux_max
   off_lux_min: !input off_lux_min
 
+  # Camera / override-for-lux inputs
+  force_on_value_sensors: !input force_on_value_sensors
+  force_on_match_values: !input force_on_match_values
+  force_on_binary_sensors: !input force_on_binary_sensors
+  force_on_binary_state: !input force_on_binary_state
+
+  # Compute: camera indicates it's dark?
+  force_cam_on: >
+    {% set vals = (force_on_match_values | default('') | lower).split(',') | map('trim') | select('string') | list %}
+    {% set val_hit = (
+      expand(force_on_value_sensors)
+      | map(attribute='state')
+      | map('lower')
+      | select('in', vals)
+      | list
+      | length > 0
+    ) if vals | length > 0 else false %}
+    {% set bin_hit = (
+      expand(force_on_binary_sensors)
+      | selectattr('state','eq', force_on_binary_state)
+      | list
+      | length > 0
+    ) %}
+    {{ val_hit or bin_hit }}
+
   # Modes
   mode_entity: !input mode_helper
   mode_day: !input mode_day_value
@@ -614,7 +673,7 @@ action:
               - condition: trigger
                 id: contact_open
           - condition: template
-            value_template: "{{ lux_ok_to_on }}"
+            value_template: "{{ lux_ok_to_on or force_cam_on }}"
           # Block while lockout timer is active (if provided)
           - condition: template
             value_template: >
