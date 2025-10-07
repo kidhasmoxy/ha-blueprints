@@ -1,5 +1,5 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.6, camera force-on, debug, validation-safe)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.7, camera force-on, debug, validation-safe)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
@@ -10,7 +10,8 @@ blueprint:
         - Manual OFF ⇒ Lockout (ends by Timeout / Mode change / either)
         - Level/CT/Color change ⇒ Capture override (reuse levels on motion until override ends)
     • Lockout/Override use optional timer helpers (restart-safe).
-    • Scenes use data.entity_id (string), Lights & AUX use target.entity_id (lists) for maximum reliability.
+    • Scenes use data.entity_id (string), Lights & AUX use target.entity_id (lists).
+    • v6.4.7: consistent debug logs for all branches; AUX-ON now turns OFF with the rest on timeout/force-off.
   domain: automation
   homeassistant:
     min_version: "2024.6.0"
@@ -447,10 +448,19 @@ action:
 
   - choose:
 
+      # MODE CHANGE: cancel timers depending on policy
       - conditions:
           - condition: trigger
             id: mode_change
         sequence:
+          - choose:
+              - conditions: "{{ debug }}"
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: "MotionMode v6.4.7"
+                      message: "Mode changed to '{{ states(mode_entity) }}'. Evaluating cancel policies."
+                      entity_id: "{{ this.entity_id }}"
           - choose:
               - conditions: >
                   {{ (lockout_timer|default('')) != '' and lockout_end_mode in ['Until Mode change','Timeout or Mode change'] }}
@@ -463,6 +473,7 @@ action:
                   - service: timer.cancel
                     data: { entity_id: !input override_timer }
 
+      # LUX-OFF (immediate): turn everything off for the active mode
       - conditions:
           - condition: trigger
             id: lux_off
@@ -472,6 +483,14 @@ action:
             value_template: "{{ not disable_off_now }}"
         sequence:
           - choose:
+              - conditions: "{{ debug }}"
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: "MotionMode v6.4.7"
+                      message: "Lux-OFF branch running."
+                      entity_id: "{{ this.entity_id }}"
+          - choose:
               - conditions: "{{ states(mode_entity) == mode_day }}"
                 sequence:
                   - choose:
@@ -479,6 +498,11 @@ action:
                         sequence:
                           - service: homeassistant.turn_off
                             target: { entity_id: !input aux_off_day_entities }
+                  - choose:
+                      - conditions: "{{ aux_on_day_entities|length>0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: { entity_id: !input aux_on_day_entities }
                   - choose:
                       - conditions: "{{ entities_day|length>0 }}"
                         sequence:
@@ -492,6 +516,11 @@ action:
                           - service: homeassistant.turn_off
                             target: { entity_id: !input aux_off_evening_entities }
                   - choose:
+                      - conditions: "{{ aux_on_evening_entities|length>0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: { entity_id: !input aux_on_evening_entities }
+                  - choose:
                       - conditions: "{{ entities_eve|length>0 }}"
                         sequence:
                           - service: homeassistant.turn_off
@@ -504,11 +533,17 @@ action:
                           - service: homeassistant.turn_off
                             target: { entity_id: !input aux_off_night_entities }
                   - choose:
+                      - conditions: "{{ aux_on_night_entities|length>0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target: { entity_id: !input aux_on_night_entities }
+                  - choose:
                       - conditions: "{{ entities_ngt|length>0 }}"
                         sequence:
                           - service: homeassistant.turn_off
                             target: { entity_id: !input entities_night }
 
+      # ACTIVATE on motion/contact, respecting lux OR camera force and lockout
       - conditions:
           - condition: or
             conditions:
@@ -529,9 +564,9 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.4.6"
+                      name: "MotionMode v6.4.7"
                       message: >
-                        Mode='{{ states(mode_entity) }}' (labels D='{{ mode_day }}', E='{{ mode_eve }}', N='{{ mode_ngt }}');
+                        ACTIVATE: Mode='{{ states(mode_entity) }}';
                         lux_ok={{ lux_ok_to_on }}, force_cam_on={{ force_cam_on }};
                         Day scene='{{ scene_day }}' entities={{ entities_day|length }};
                         Eve scene='{{ scene_eve }}' entities={{ entities_eve|length }};
@@ -549,12 +584,13 @@ action:
                         sequence:
                           - service: logbook.log
                             data:
-                              name: "MotionMode v6.4.6"
+                              name: "MotionMode v6.4.7"
                               message: "Applied OVERRIDE scene scene.{{ override_scene_id }}"
                               entity_id: "{{ this.entity_id }}"
                   - stop: "Applied override scene (timer active)"
             default: []
 
+          # Guard: no targets for current mode
           - choose:
               - conditions: >
                   {% set m = states(mode_entity) %}
@@ -568,11 +604,12 @@ action:
                         sequence:
                           - service: logbook.log
                             data:
-                              name: "MotionMode v6.4.6"
-                              message: "No scene/entities for current mode; skipping."
+                              name: "MotionMode v6.4.7"
+                              message: "Guard: No scene/entities for current mode; stopping."
                               entity_id: "{{ this.entity_id }}"
                   - stop: "No targets for current mode"
 
+          # Apply per-mode scene/entities and AUX-ON
           - choose:
 
               - conditions: "{{ states(mode_entity) == mode_day }}"
@@ -582,11 +619,7 @@ action:
                         sequence:
                           - service: scene.turn_on
                             data: { entity_id: "{{ scene_day }}" }
-                          - choose:
-                              - conditions: "{{ debug }}"
-                                sequence:
-                                  - service: logbook.log
-                                    data: { name: "MotionMode v6.4.6", message: "DAY: scene {{ scene_day }}", entity_id: "{{ this.entity_id }}" }
+                  - choose:
                       - conditions: "{{ entities_day|length>0 }}"
                         sequence:
                           - choose:
@@ -605,11 +638,6 @@ action:
                                   - service: light.turn_on
                                     target: { entity_id: !input entities_day }
                                     data: { brightness_pct: "{{ day_bri|int }}" }
-                          - choose:
-                              - conditions: "{{ debug }}"
-                                sequence:
-                                  - service: logbook.log
-                                    data: { name: "MotionMode v6.4.6", message: "DAY: turned on {{ entities_day|join(',') }}", entity_id: "{{ this.entity_id }}" }
                   - choose:
                       - conditions: "{{ aux_on_day_entities|length>0 }}"
                         sequence:
@@ -629,11 +657,7 @@ action:
                         sequence:
                           - service: scene.turn_on
                             data: { entity_id: "{{ scene_evening }}" }
-                          - choose:
-                              - conditions: "{{ debug }}"
-                                sequence:
-                                  - service: logbook.log
-                                    data: { name: "MotionMode v6.4.6", message: "EVE: scene {{ scene_evening }}", entity_id: "{{ this.entity_id }}" }
+                  - choose:
                       - conditions: "{{ entities_eve|length>0 }}"
                         sequence:
                           - choose:
@@ -652,11 +676,6 @@ action:
                                   - service: light.turn_on
                                     target: { entity_id: !input entities_evening }
                                     data: { brightness_pct: "{{ eve_bri|int }}" }
-                          - choose:
-                              - conditions: "{{ debug }}"
-                                sequence:
-                                  - service: logbook.log
-                                    data: { name: "MotionMode v6.4.6", message: "EVE: turned on {{ entities_eve|join(',') }}", entity_id: "{{ this.entity_id }}" }
                   - choose:
                       - conditions: "{{ aux_on_evening_entities|length>0 }}"
                         sequence:
@@ -676,11 +695,7 @@ action:
                         sequence:
                           - service: scene.turn_on
                             data: { entity_id: "{{ scene_night }}" }
-                          - choose:
-                              - conditions: "{{ debug }}"
-                                sequence:
-                                  - service: logbook.log
-                                    data: { name: "MotionMode v6.4.6", message: "NGT: scene {{ scene_night }}", entity_id: "{{ this.entity_id }}" }
+                  - choose:
                       - conditions: "{{ entities_ngt|length>0 }}"
                         sequence:
                           - choose:
@@ -699,11 +714,6 @@ action:
                                   - service: light.turn_on
                                     target: { entity_id: !input entities_night }
                                     data: { brightness_pct: "{{ ngt_bri|int }}" }
-                          - choose:
-                              - conditions: "{{ debug }}"
-                                sequence:
-                                  - service: logbook.log
-                                    data: { name: "MotionMode v6.4.6", message: "NGT: turned on {{ entities_ngt|join(',') }}", entity_id: "{{ this.entity_id }}" }
                   - choose:
                       - conditions: "{{ aux_on_night_entities|length>0 }}"
                         sequence:
@@ -716,6 +726,7 @@ action:
                       - service: homeassistant.turn_on
                         target: { entity_id: !input entities_night }
 
+          # Watch window (minutes)
           - wait_for_trigger:
               - platform: state
                 id: "manual_off"
@@ -776,6 +787,7 @@ action:
                           - service: timer.start
                             data: { entity_id: !input override_timer, duration: "{{ (override_timeout_min|int)*60 }}" }
 
+      # TIMER-OFF: idle/closed expiry
       - conditions:
           - condition: or
             conditions:
@@ -786,6 +798,14 @@ action:
               - condition: trigger
                 id: mode_change
         sequence:
+          - choose:
+              - conditions: "{{ debug }}"
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: "MotionMode v6.4.7"
+                      message: "Timer-OFF branch waiting {{ off_delay|int }}s."
+                      entity_id: "{{ this.entity_id }}"
           - wait_for_trigger:
               - platform: state
                 entity_id: !input motion_or_presence_sensors
@@ -818,6 +838,11 @@ action:
                                   - service: homeassistant.turn_off
                                     target: { entity_id: !input aux_off_day_entities }
                           - choose:
+                              - conditions: "{{ aux_on_day_entities|length>0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: { entity_id: !input aux_on_day_entities }
+                          - choose:
                               - conditions: "{{ entities_day|length>0 }}"
                                 sequence:
                                   - service: homeassistant.turn_off
@@ -830,6 +855,11 @@ action:
                                   - service: homeassistant.turn_off
                                     target: { entity_id: !input aux_off_evening_entities }
                           - choose:
+                              - conditions: "{{ aux_on_evening_entities|length>0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: { entity_id: !input aux_on_evening_entities }
+                          - choose:
                               - conditions: "{{ entities_eve|length>0 }}"
                                 sequence:
                                   - service: homeassistant.turn_off
@@ -841,6 +871,11 @@ action:
                                 sequence:
                                   - service: homeassistant.turn_off
                                     target: { entity_id: !input aux_off_night_entities }
+                          - choose:
+                              - conditions: "{{ aux_on_night_entities|length>0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target: { entity_id: !input aux_on_night_entities }
                           - choose:
                               - conditions: "{{ entities_ngt|length>0 }}"
                                 sequence:
