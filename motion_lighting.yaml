@@ -622,13 +622,13 @@ action:
                 sequence:
                   - service: timer.cancel
                     target:
-                      entity_id: !input lockout_timer
+                      entity_id: "{{ lockout_timer }}"
               - conditions: >
                   {{ (override_timer|default('')) != '' and override_end_mode in ['Until Mode change','Timeout or Mode change'] }}
                 sequence:
                   - service: timer.cancel
                     target:
-                      entity_id: !input override_timer
+                      entity_id: "{{ override_timer }}"
 
       # LUX-OFF (immediate): turn everything off for the active mode
       - conditions:
@@ -966,7 +966,7 @@ action:
                         sequence:
                           - service: timer.start
                             target:
-                              entity_id: !input lockout_timer
+                              entity_id: "{{ lockout_timer }}"
                             data:
                               duration: "{{ (lockout_timeout_min|int) * 60 }}"
                       - conditions: []
@@ -1004,7 +1004,7 @@ action:
                         sequence:
                           - service: timer.start
                             target:
-                              entity_id: !input override_timer
+                              entity_id: "{{ override_timer }}"
                             data:
                               duration: "{{ (override_timeout_min|int) * 60 }}"
 
