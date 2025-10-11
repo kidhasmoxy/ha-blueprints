@@ -508,7 +508,7 @@ variables:
   eve_off: !input evening_off_delay
   ngt_off: !input night_off_delay
   off_delay: >
-    {% set m = states(mode_entity) if mode_entity else 'Day' %}
+    {% set m = mode_now %}
     {% if m == mode_day %}{{ day_off }}
     {% elif m == mode_eve %}{{ eve_off }}
     {% elif m == mode_ngt %}{{ ngt_off }}
@@ -614,7 +614,7 @@ action:
                   - service: logbook.log
                     data:
                       name: "MotionMode v6.5.1"
-                      message: "Mode changed to '{{ states(mode_entity) }}'. Evaluating cancel policies."
+                      message: "Mode changed to '{{ mode_now }}'. Evaluating cancel policies."
                       entity_id: "{{ this.entity_id }}"
           - choose:
               - conditions: >
@@ -648,7 +648,7 @@ action:
                       message: "Lux-OFF branch running."
                       entity_id: "{{ this.entity_id }}"
           - choose:
-              - conditions: "{{ states(mode_entity) == mode_day }}"
+              - conditions: "{{ mode_now == mode_day }}"
                 sequence:
                   - choose:
                       - conditions: "{{ aux_off_day_entities | length > 0 }}"
@@ -668,7 +668,7 @@ action:
                           - service: homeassistant.turn_off
                             target:
                               entity_id: !input entities_day
-              - conditions: "{{ states(mode_entity) == mode_eve }}"
+              - conditions: "{{ mode_now == mode_eve }}"
                 sequence:
                   - choose:
                       - conditions: "{{ aux_off_evening_entities | length > 0 }}"
@@ -688,7 +688,7 @@ action:
                           - service: homeassistant.turn_off
                             target:
                               entity_id: !input entities_evening
-              - conditions: "{{ states(mode_entity) == mode_ngt }}"
+              - conditions: "{{ mode_now == mode_ngt }}"
                 sequence:
                   - choose:
                       - conditions: "{{ aux_off_night_entities | length > 0 }}"
@@ -735,7 +735,7 @@ action:
                     data:
                       name: "MotionMode v6.5.1"
                       message: >
-                        ACTIVATE: Mode='{{ states(mode_entity) }}';
+                        ACTIVATE: Mode='{{ mode_now }}';
                         lux_ok={{ lux_ok_to_on }}, force_cam_on={{ force_cam_on }};
                         Day scene='{{ scene_day }}' entities={{ entities_day|length }};
                         Eve scene='{{ scene_eve }}' entities={{ entities_eve|length }};
@@ -761,11 +761,10 @@ action:
                   - stop: "Applied override scene (timer active)"
             default: []
 
-{{ ... }}
           # Guard: no targets for current mode
           - choose:
               - conditions: >
-                  {% set m = states(mode_entity) %}
+                  {% set m = mode_now %}
                   {{ (m == mode_day and (scene_day == '' and (entities_day|length)==0)) or
                      (m == mode_eve and (scene_eve == '' and (entities_eve|length)==0)) or
                      (m == mode_ngt and (scene_ngt == '' and (entities_ngt|length)==0)) or
@@ -784,7 +783,7 @@ action:
           # Apply per-mode scene/entities and AUX-ON
           - choose:
 
-              - conditions: "{{ states(mode_entity) == mode_day }}"
+              - conditions: "{{ mode_now == mode_day }}"
                 sequence:
                   - choose:
                       - conditions: "{{ scene_day != '' }}"
@@ -833,7 +832,7 @@ action:
                         target:
                           entity_id: !input entities_day
 
-              - conditions: "{{ states(mode_entity) == mode_eve }}"
+              - conditions: "{{ mode_now == mode_eve }}"
                 sequence:
                   - choose:
                       - conditions: "{{ scene_eve != '' }}"
@@ -882,7 +881,7 @@ action:
                         target:
                           entity_id: !input entities_evening
 
-              - conditions: "{{ states(mode_entity) == mode_ngt }}"
+              - conditions: "{{ mode_now == mode_ngt }}"
                 sequence:
                   - choose:
                       - conditions: "{{ scene_ngt != '' }}"
@@ -1056,7 +1055,7 @@ action:
                   - condition: template
                     value_template: "{{ not disable_off_now }}"
                   - choose:
-                      - conditions: "{{ states(mode_entity) == mode_day }}"
+                      - conditions: "{{ mode_now == mode_day }}"
                         sequence:
                           - choose:
                               - conditions: "{{ aux_off_day_entities | length > 0 }}"
@@ -1076,7 +1075,7 @@ action:
                                   - service: homeassistant.turn_off
                                     target:
                                       entity_id: !input entities_day
-                      - conditions: "{{ states(mode_entity) == mode_eve }}"
+                      - conditions: "{{ mode_now == mode_eve }}"
                         sequence:
                           - choose:
                               - conditions: "{{ aux_off_evening_entities | length > 0 }}"
@@ -1096,7 +1095,7 @@ action:
                                   - service: homeassistant.turn_off
                                     target:
                                       entity_id: !input entities_evening
-                      - conditions: "{{ states(mode_entity) == mode_ngt }}"
+                      - conditions: "{{ mode_now == mode_ngt }}"
                         sequence:
                           - choose:
                               - conditions: "{{ aux_off_night_entities | length > 0 }}"
