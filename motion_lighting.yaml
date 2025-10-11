@@ -1,13 +1,15 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.4.9, camera force-on, debug, lux optional)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.5.1, HA 2024.6+ fixes)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Activators: motion/occupancy OR ANY binary sensor (no device class required), contact sensors; plus keep-alive
     • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
     • AUX-ON/AUX-OFF per mode; camera-based lux bypass; optional lux OFF gate
     • Watch window + lockout on manual OFF; capture level overrides on level/CT/color change
-    • Validation-safe: lights/AUX use target.entity_id (lists), scenes use data.entity_id (string)
-    • v6.4.9: Lux sensor truly optional (no save error), “person” domain removed from activators, broader binary_sensor support
+    • Validation-safe: lights/AUX use target.entity_id (lists), scenes use target.entity_id (HA 2024.6+)
+    • v6.5.1: Fixed undefined template variables (scene_evening → scene_eve, scene_night → scene_ngt)
+    • v6.5.0: Fixed service calls to use target.entity_id instead of data.entity_id (HA 2024.6+ compatibility)
+    • v6.4.9: Lux sensor truly optional (no save error), "person" domain removed from activators, broader binary_sensor support
   domain: automation
   homeassistant:
     min_version: "2024.6.0"
@@ -611,7 +613,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.4.9"
+                      name: "MotionMode v6.5.1"
                       message: "Mode changed to '{{ states(mode_entity) }}'. Evaluating cancel policies."
                       entity_id: "{{ this.entity_id }}"
           - choose:
@@ -619,13 +621,13 @@ action:
                   {{ (lockout_timer|default('')) != '' and lockout_end_mode in ['Until Mode change','Timeout or Mode change'] }}
                 sequence:
                   - service: timer.cancel
-                    data:
+                    target:
                       entity_id: !input lockout_timer
               - conditions: >
                   {{ (override_timer|default('')) != '' and override_end_mode in ['Until Mode change','Timeout or Mode change'] }}
                 sequence:
                   - service: timer.cancel
-                    data:
+                    target:
                       entity_id: !input override_timer
 
       # LUX-OFF (immediate): turn everything off for the active mode
@@ -642,7 +644,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.4.9"
+                      name: "MotionMode v6.5.1"
                       message: "Lux-OFF branch running."
                       entity_id: "{{ this.entity_id }}"
           - choose:
@@ -731,7 +733,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.4.9"
+                      name: "MotionMode v6.5.1"
                       message: >
                         ACTIVATE: Mode='{{ states(mode_entity) }}';
                         lux_ok={{ lux_ok_to_on }}, force_cam_on={{ force_cam_on }};
@@ -746,19 +748,20 @@ action:
                   {{ (override_timer | default('')) != '' and is_state(override_timer, 'active') }}
                 sequence:
                   - service: scene.turn_on
-                    data:
+                    target:
                       entity_id: "scene.{{ override_scene_id }}"
                   - choose:
                       - conditions: "{{ debug }}"
                         sequence:
                           - service: logbook.log
                             data:
-                              name: "MotionMode v6.4.9"
+                              name: "MotionMode v6.5.1"
                               message: "Applied OVERRIDE scene scene.{{ override_scene_id }}"
                               entity_id: "{{ this.entity_id }}"
                   - stop: "Applied override scene (timer active)"
             default: []
 
+{{ ... }}
           # Guard: no targets for current mode
           - choose:
               - conditions: >
@@ -773,7 +776,7 @@ action:
                         sequence:
                           - service: logbook.log
                             data:
-                              name: "MotionMode v6.4.9"
+                              name: "MotionMode v6.5.1"
                               message: "Guard: No scene/entities for current mode; stopping."
                               entity_id: "{{ this.entity_id }}"
                   - stop: "No targets for current mode"
@@ -787,7 +790,7 @@ action:
                       - conditions: "{{ scene_day != '' }}"
                         sequence:
                           - service: scene.turn_on
-                            data:
+                            target:
                               entity_id: "{{ scene_day }}"
                   - choose:
                       - conditions: "{{ entities_day | length > 0 }}"
@@ -833,11 +836,11 @@ action:
               - conditions: "{{ states(mode_entity) == mode_eve }}"
                 sequence:
                   - choose:
-                      - conditions: "{{ scene_evening != '' }}"
+                      - conditions: "{{ scene_eve != '' }}"
                         sequence:
                           - service: scene.turn_on
-                            data:
-                              entity_id: "{{ scene_evening }}"
+                            target:
+                              entity_id: "{{ scene_eve }}"
                   - choose:
                       - conditions: "{{ entities_eve | length > 0 }}"
                         sequence:
@@ -882,11 +885,11 @@ action:
               - conditions: "{{ states(mode_entity) == mode_ngt }}"
                 sequence:
                   - choose:
-                      - conditions: "{{ scene_night != '' }}"
+                      - conditions: "{{ scene_ngt != '' }}"
                         sequence:
                           - service: scene.turn_on
-                            data:
-                              entity_id: "{{ scene_night }}"
+                            target:
+                              entity_id: "{{ scene_ngt }}"
                   - choose:
                       - conditions: "{{ entities_ngt | length > 0 }}"
                         sequence:
@@ -963,18 +966,19 @@ action:
                       - conditions: "{{ (lockout_timer | default('')) != '' }}"
                         sequence:
                           - service: timer.start
-                            data:
+                            target:
                               entity_id: !input lockout_timer
+                            data:
                               duration: "{{ (lockout_timeout_min|int) * 60 }}"
                       - conditions: []
                         sequence:
                           - service: automation.turn_off
-                            data:
+                            target:
                               entity_id: "{{ this.entity_id }}"
                           - delay:
                               minutes: "{{ lockout_timeout_min|int }}"
                           - service: automation.turn_on
-                            data:
+                            target:
                               entity_id: "{{ this.entity_id }}"
 
               # --- Level/CT/Color change → capture override (no lockout) ---
@@ -1000,8 +1004,9 @@ action:
                       - conditions: "{{ (override_timer | default('')) != '' }}"
                         sequence:
                           - service: timer.start
-                            data:
+                            target:
                               entity_id: !input override_timer
+                            data:
                               duration: "{{ (override_timeout_min|int) * 60 }}"
 
       # ==== Timer-based OFF (idle or mode change) ====
@@ -1022,7 +1027,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.4.9"
+                      name: "MotionMode v6.5.1"
                       message: "Timer-OFF branch waiting {{ off_delay|int }}s."
                       entity_id: "{{ this.entity_id }}"
           - wait_for_trigger:
