@@ -1,5 +1,5 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.5.1, HA 2024.6+ fixes)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.5.2, HA 2024.6+ fixes)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Activators: motion/occupancy OR ANY binary sensor (no device class required), contact sensors; plus keep-alive
@@ -7,6 +7,7 @@ blueprint:
     • AUX-ON/AUX-OFF per mode; camera-based lux bypass; optional lux OFF gate
     • Watch window + lockout on manual OFF; capture level overrides on level/CT/color change
     • Validation-safe: lights/AUX use target.entity_id (lists), scenes use target.entity_id (HA 2024.6+)
+    • v6.5.2: Fixed lux trigger with blank sensor, AUX-OFF logic, "Physical only" detection, fallback lockout stop_actions
     • v6.5.1: Fixed undefined template variables (scene_evening → scene_eve, scene_night → scene_ngt)
     • v6.5.0: Fixed service calls to use target.entity_id instead of data.entity_id (HA 2024.6+ compatibility)
     • v6.4.9: Lux sensor truly optional (no save error), "person" domain removed from activators, broader binary_sensor support
@@ -618,7 +619,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.5.1"
+                      name: "MotionMode v6.5.2"
                       message: "Mode changed to '{{ mode_now }}'. Evaluating cancel policies."
                       entity_id: "{{ this.entity_id }}"
           - choose:
@@ -649,7 +650,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.5.1"
+                      name: "MotionMode v6.5.2"
                       message: "Lux-OFF branch running."
                       entity_id: "{{ this.entity_id }}"
           - choose:
@@ -747,7 +748,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.5.1"
+                      name: "MotionMode v6.5.2"
                       message: >
                         ACTIVATE: Mode='{{ mode_now }}';
                         lux_ok={{ lux_ok_to_on }}, force_cam_on={{ force_cam_on }};
@@ -769,7 +770,7 @@ action:
                         sequence:
                           - service: logbook.log
                             data:
-                              name: "MotionMode v6.5.1"
+                              name: "MotionMode v6.5.2"
                               message: "Applied OVERRIDE scene scene.{{ override_scene_id }}"
                               entity_id: "{{ this.entity_id }}"
                   - stop: "Applied override scene (timer active)"
@@ -789,7 +790,7 @@ action:
                         sequence:
                           - service: logbook.log
                             data:
-                              name: "MotionMode v6.5.1"
+                              name: "MotionMode v6.5.2"
                               message: "Guard: No scene/entities for current mode; stopping."
                               entity_id: "{{ this.entity_id }}"
                   - stop: "No targets for current mode"
@@ -1043,7 +1044,7 @@ action:
                 sequence:
                   - service: logbook.log
                     data:
-                      name: "MotionMode v6.5.1"
+                      name: "MotionMode v6.5.2"
                       message: "Timer-OFF branch waiting {{ off_delay|int }}s."
                       entity_id: "{{ this.entity_id }}"
           - wait_for_trigger:
