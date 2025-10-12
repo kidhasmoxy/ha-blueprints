@@ -535,6 +535,10 @@ variables:
   disable_off_bool: !input disable_off_via_boolean
   debug: !input debug_logging
 
+trigger_variables:
+  lux_sensor_input: !input lux_sensor
+  off_lux_min_input: !input off_lux_min
+
 trigger:
   # Activators (ANY binary_sensor -> on; Contacts -> on/open)
   - platform: state
@@ -582,11 +586,12 @@ trigger:
   # Lux-based immediate OFF (template trigger; SAFE if lux sensor is blank)
   - platform: template
     id: lux_off
-    value_template: >
-      {% set le = lux_entity %}
-      {% if le and (off_lux_min|int > 0) %}
-        {{ states(le)|float(0) >= off_lux_min|int }}
-      {% else %} false {% endif %}
+    value_template: >-
+      {% if lux_sensor_input and lux_sensor_input != '' and off_lux_min_input > 0 %}
+        {{ states(lux_sensor_input) | float(0) >= off_lux_min_input }}
+      {% else %}
+        false
+      {% endif %}
 
 condition: []
 
