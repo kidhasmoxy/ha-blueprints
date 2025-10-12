@@ -655,64 +655,73 @@ action:
           - choose:
               - conditions: "{{ mode_now == mode_day }}"
                 sequence:
-                  - choose:
-                      - conditions: "{{ aux_off_day_entities | length > 0 }}"
-                        sequence:
-                          - service: homeassistant.turn_off
-                            target:
-                              entity_id: !input aux_off_day_entities
-                  - choose:
-                      - conditions: "{{ aux_on_day_entities | length > 0 }}"
-                        sequence:
-                          - service: homeassistant.turn_off
-                            target:
-                              entity_id: !input aux_on_day_entities
+                  # Turn OFF main lights
                   - choose:
                       - conditions: "{{ entities_day | length > 0 }}"
                         sequence:
                           - service: homeassistant.turn_off
                             target:
                               entity_id: !input entities_day
+                  # Turn OFF aux_on entities
+                  - choose:
+                      - conditions: "{{ aux_on_day_entities | length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target:
+                              entity_id: !input aux_on_day_entities
+                  # Turn OFF aux_off entities (clean up manually-on lights)
+                  - choose:
+                      - conditions: "{{ aux_off_day_entities | length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target:
+                              entity_id: !input aux_off_day_entities
               - conditions: "{{ mode_now == mode_eve }}"
                 sequence:
-                  - choose:
-                      - conditions: "{{ aux_off_evening_entities | length > 0 }}"
-                        sequence:
-                          - service: homeassistant.turn_off
-                            target:
-                              entity_id: !input aux_off_evening_entities
-                  - choose:
-                      - conditions: "{{ aux_on_evening_entities | length > 0 }}"
-                        sequence:
-                          - service: homeassistant.turn_off
-                            target:
-                              entity_id: !input aux_on_evening_entities
+                  # Turn OFF main lights
                   - choose:
                       - conditions: "{{ entities_eve | length > 0 }}"
                         sequence:
                           - service: homeassistant.turn_off
                             target:
                               entity_id: !input entities_evening
+                  # Turn OFF aux_on entities
+                  - choose:
+                      - conditions: "{{ aux_on_evening_entities | length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target:
+                              entity_id: !input aux_on_evening_entities
+                  # Turn OFF aux_off entities (clean up manually-on lights)
+                  - choose:
+                      - conditions: "{{ aux_off_evening_entities | length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target:
+                              entity_id: !input aux_off_evening_entities
               - conditions: "{{ mode_now == mode_ngt }}"
                 sequence:
-                  - choose:
-                      - conditions: "{{ aux_off_night_entities | length > 0 }}"
-                        sequence:
-                          - service: homeassistant.turn_off
-                            target:
-                              entity_id: !input aux_off_night_entities
-                  - choose:
-                      - conditions: "{{ aux_on_night_entities | length > 0 }}"
-                        sequence:
-                          - service: homeassistant.turn_off
-                            target:
-                              entity_id: !input aux_on_night_entities
+                  # Turn OFF main lights
                   - choose:
                       - conditions: "{{ entities_ngt | length > 0 }}"
                         sequence:
                           - service: homeassistant.turn_off
                             target:
                               entity_id: !input entities_night
+                  # Turn OFF aux_on entities
+                  - choose:
+                      - conditions: "{{ aux_on_night_entities | length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target:
+                              entity_id: !input aux_on_night_entities
+                  # Turn OFF aux_off entities (clean up manually-on lights)
+                  - choose:
+                      - conditions: "{{ aux_off_night_entities | length > 0 }}"
+                        sequence:
+                          - service: homeassistant.turn_off
+                            target:
+                              entity_id: !input aux_off_night_entities
 
       # ACTIVATE on motion/contact, respecting lux OR camera force and lockout
       - conditions:
@@ -785,11 +794,12 @@ action:
                               entity_id: "{{ this.entity_id }}"
                   - stop: "No targets for current mode"
 
-          # Apply per-mode scene/entities and AUX-ON
+          # Apply per-mode scene/entities and AUX
           - choose:
 
               - conditions: "{{ mode_now == mode_day }}"
                 sequence:
+                  # Activate scene or lights (aux_off unchanged)
                   - choose:
                       - conditions: "{{ scene_day != '' }}"
                         sequence:
@@ -839,6 +849,7 @@ action:
 
               - conditions: "{{ mode_now == mode_eve }}"
                 sequence:
+                  # Activate scene or lights (aux_off unchanged)
                   - choose:
                       - conditions: "{{ scene_eve != '' }}"
                         sequence:
@@ -888,6 +899,7 @@ action:
 
               - conditions: "{{ mode_now == mode_ngt }}"
                 sequence:
+                  # Activate scene or lights (aux_off unchanged)
                   - choose:
                       - conditions: "{{ scene_ngt != '' }}"
                         sequence:
@@ -959,11 +971,10 @@ action:
                   - condition: template
                     value_template: >
                       {% set uid = wait.trigger.to_state.context.user_id %}
-                      {% set pid = wait.trigger.to_state.context.parent_id %}
                       {% if lockout_mode == 'Digital only' %}
                         {{ uid is not none }}
                       {% elif lockout_mode == 'Physical only' %}
-                        {{ uid is none and pid is none }}
+                        {{ uid is none }}
                       {% else %} true {% endif %}
                 sequence:
                   - choose:
@@ -993,11 +1004,10 @@ action:
                   - condition: template
                     value_template: >
                       {% set uid = wait.trigger.to_state.context.user_id %}
-                      {% set pid = wait.trigger.to_state.context.parent_id %}
                       {% if override_change_source == 'Digital only' %}
                         {{ uid is not none }}
                       {% elif override_change_source == 'Physical only' %}
-                        {{ uid is none and pid is none }}
+                        {{ uid is none }}
                       {% else %} true {% endif %}
                 sequence:
                   - service: scene.create
@@ -1062,61 +1072,70 @@ action:
                   - choose:
                       - conditions: "{{ mode_now == mode_day }}"
                         sequence:
-                          - choose:
-                              - conditions: "{{ aux_off_day_entities | length > 0 }}"
-                                sequence:
-                                  - service: homeassistant.turn_off
-                                    target:
-                                      entity_id: !input aux_off_day_entities
-                          - choose:
-                              - conditions: "{{ aux_on_day_entities | length > 0 }}"
-                                sequence:
-                                  - service: homeassistant.turn_off
-                                    target:
-                                      entity_id: !input aux_on_day_entities
+                          # Turn OFF main lights
                           - choose:
                               - conditions: "{{ entities_day | length > 0 }}"
                                 sequence:
                                   - service: homeassistant.turn_off
                                     target:
                                       entity_id: !input entities_day
+                          # Turn OFF aux_on entities
+                          - choose:
+                              - conditions: "{{ aux_on_day_entities | length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target:
+                                      entity_id: !input aux_on_day_entities
+                          # Turn OFF aux_off entities (clean up manually-on lights)
+                          - choose:
+                              - conditions: "{{ aux_off_day_entities | length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target:
+                                      entity_id: !input aux_off_day_entities
                       - conditions: "{{ mode_now == mode_eve }}"
                         sequence:
-                          - choose:
-                              - conditions: "{{ aux_off_evening_entities | length > 0 }}"
-                                sequence:
-                                  - service: homeassistant.turn_off
-                                    target:
-                                      entity_id: !input aux_off_evening_entities
-                          - choose:
-                              - conditions: "{{ aux_on_evening_entities | length > 0 }}"
-                                sequence:
-                                  - service: homeassistant.turn_off
-                                    target:
-                                      entity_id: !input aux_on_evening_entities
+                          # Turn OFF main lights
                           - choose:
                               - conditions: "{{ entities_eve | length > 0 }}"
                                 sequence:
                                   - service: homeassistant.turn_off
                                     target:
                                       entity_id: !input entities_evening
+                          # Turn OFF aux_on entities
+                          - choose:
+                              - conditions: "{{ aux_on_evening_entities | length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target:
+                                      entity_id: !input aux_on_evening_entities
+                          # Turn OFF aux_off entities (clean up manually-on lights)
+                          - choose:
+                              - conditions: "{{ aux_off_evening_entities | length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target:
+                                      entity_id: !input aux_off_evening_entities
                       - conditions: "{{ mode_now == mode_ngt }}"
                         sequence:
-                          - choose:
-                              - conditions: "{{ aux_off_night_entities | length > 0 }}"
-                                sequence:
-                                  - service: homeassistant.turn_off
-                                    target:
-                                      entity_id: !input aux_off_night_entities
-                          - choose:
-                              - conditions: "{{ aux_on_night_entities | length > 0 }}"
-                                sequence:
-                                  - service: homeassistant.turn_off
-                                    target:
-                                      entity_id: !input aux_on_night_entities
+                          # Turn OFF main lights
                           - choose:
                               - conditions: "{{ entities_ngt | length > 0 }}"
                                 sequence:
                                   - service: homeassistant.turn_off
                                     target:
                                       entity_id: !input entities_night
+                          # Turn OFF aux_on entities
+                          - choose:
+                              - conditions: "{{ aux_on_night_entities | length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target:
+                                      entity_id: !input aux_on_night_entities
+                          # Turn OFF aux_off entities (clean up manually-on lights)
+                          - choose:
+                              - conditions: "{{ aux_off_night_entities | length > 0 }}"
+                                sequence:
+                                  - service: homeassistant.turn_off
+                                    target:
+                                      entity_id: !input aux_off_night_entities
