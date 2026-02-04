@@ -602,9 +602,17 @@ action:
       any_motion_on: "{{ expand(motion_list)|selectattr('state','eq','on')|list|count > 0 }}"
       any_contact_open: "{{ expand(contacts_list)|selectattr('state','in',['on','open'])|list|count > 0 }}"
       any_keepalive_on: "{{ expand(keepalive_list)|selectattr('state','in',['on','open'])|list|count > 0 }}"
+      lux_has_valid: >
+        {% if lux_entity and on_lux_max|int > 0 %}
+          {{ states(lux_entity) not in ['unknown','unavailable','none'] }}
+        {% else %}false{% endif %}
       lux_ok_to_on: >
         {% if lux_entity and on_lux_max|int > 0 %}
-          {{ states(lux_entity)|float(9999) < on_lux_max|int }}
+          {% if states(lux_entity) in ['unknown','unavailable','none'] %}
+            true
+          {% else %}
+            {{ states(lux_entity)|float(9999) < on_lux_max|int }}
+          {% endif %}
         {% else %}true{% endif %}
 
   - choose:
@@ -735,7 +743,7 @@ action:
               - condition: trigger
                 id: contact_open_alt
           - condition: template
-            value_template: "{{ lux_ok_to_on or force_cam_on }}"
+            value_template: "{{ lux_ok_to_on or (force_cam_on and not lux_has_valid) }}"
           # Block while lockout timer is active (if provided)
           - condition: template
             value_template: >
@@ -957,11 +965,22 @@ action:
               - platform: state
                 id: "level_change"
                 entity_id: !input override_capture_lights
-                from: "on"
-                to: "on"
+                attribute: brightness
+              - platform: state
+                id: "level_change"
+                entity_id: !input override_capture_lights
+                attribute: color_temp
+              - platform: state
+                id: "level_change"
+                entity_id: !input override_capture_lights
+                attribute: rgb_color
+              - platform: state
+                id: "level_change"
+                entity_id: !input override_capture_lights
+                attribute: hs_color
             timeout:
               minutes: "{{ watch_window|int }}"
-            continue_on_timeout: false
+            continue_on_timeout: true
 
           - choose:
               # --- Manual OFF detected → start lockout ---
@@ -1002,7 +1021,9 @@ action:
               # --- Level/CT/Color change → capture override (no lockout) ---
               - conditions:
                   - condition: template
-                    value_template: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
+                    value_template: >
+                      {{ wait.trigger is not none and wait.trigger.id == 'level_change' and
+                         wait.trigger.to_state.state == 'on' }}
                   # Source filter for override capture
                   - condition: template
                     value_template: >
@@ -1047,6 +1068,8 @@ action:
                       name: "MotionMode v6.5.2"
                       message: "Timer-OFF branch waiting {{ off_delay|int }}s."
                       entity_id: "{{ this.entity_id }}"
+          - condition: template
+            value_template: "{{ not any_motion_on and not any_contact_open and not any_keepalive_on }}"
           - wait_for_trigger:
               - platform: state
                 entity_id: !input motion_or_presence_sensors
