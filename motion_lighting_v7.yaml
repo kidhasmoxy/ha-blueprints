@@ -335,7 +335,7 @@ blueprint:
         lockout_timeout:
           name: "Lockout / override timeout (minutes)"
           description: "How long automation stays hands-off after a manual change. Override capture also uses this window. Range 1–120."
-          default: 15
+          default: 60
           selector:
             number:
               min: 1
@@ -1103,9 +1103,67 @@ action:
                                 {% elif lockout_mode == 'Physical only' %}{{ uid is none }}
                                 {% else %}true{% endif %}
                           sequence:
-                            - delay:
-                                minutes: "{{ lockout_timeout_min | int }}"
-                            - stop: "Lockout (manual off during off-delay)"
+                            - choose:
+                                - conditions: "{{ debug }}"
+                                  sequence:
+                                    - service: logbook.log
+                                      data:
+                                        name: "MotionMode v7"
+                                        message: "LOCKOUT: manual OFF during off-delay. Hands off {{ lockout_timeout_min }} min."
+                                        entity_id: "{{ this.entity_id }}"
+                            - variables:
+                                lockout_start: "{{ as_timestamp(now()) }}"
+                                lockout_secs: "{{ lockout_timeout_min | int * 60 }}"
+                            - repeat:
+                                while:
+                                  - condition: template
+                                    value_template: "{{ (as_timestamp(now()) - lockout_start) < lockout_secs | float }}"
+                                sequence:
+                                  - variables:
+                                      remaining: "{{ [1, lockout_secs | float - (as_timestamp(now()) - lockout_start)] | max | int }}"
+                                  - wait_for_trigger:
+                                      - platform: state
+                                        id: "level_change"
+                                        entity_id: !input override_capture_lights
+                                        attribute: brightness
+                                      - platform: state
+                                        id: "level_change"
+                                        entity_id: !input override_capture_lights
+                                        attribute: color_temp
+                                      - platform: state
+                                        id: "level_change"
+                                        entity_id: !input override_capture_lights
+                                        attribute: rgb_color
+                                      - platform: state
+                                        id: "level_change"
+                                        entity_id: !input override_capture_lights
+                                        attribute: hs_color
+                                      - platform: state
+                                        id: "mode_change"
+                                        entity_id: !input mode_helper
+                                    timeout:
+                                      seconds: "{{ remaining }}"
+                                    continue_on_timeout: true
+                                  - choose:
+                                      - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
+                                        sequence:
+                                          - choose:
+                                              - conditions: >
+                                                  {% set uid = wait.trigger.to_state.context.user_id %}
+                                                  {% if override_change_source == 'Digital only' %}{{ uid is not none }}
+                                                  {% elif override_change_source == 'Physical only' %}{{ uid is none }}
+                                                  {% else %}true{% endif %}
+                                                sequence:
+                                                  - variables:
+                                                      override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                                                  - service: scene.create
+                                                    data:
+                                                      scene_id: "{{ override_scene_id }}"
+                                                      snapshot_entities: !input override_capture_lights
+                                      - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
+                                        sequence:
+                                          - stop: "Lockout ended by mode change (off-delay manual off)"
+                            - stop: "Lockout timeout expired (off-delay manual off)"
                         # Mode change during off-delay → re-apply (continue loop)
                         - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
                           sequence: []
@@ -1301,9 +1359,67 @@ action:
                                   data:
                                     scene_id: "{{ override_scene_id }}"
                                     snapshot_entities: !input override_capture_lights
-                                - delay:
-                                    minutes: "{{ lockout_timeout_min | int }}"
-                                - stop: "Post-OFF override captured, lockout expired"
+                                - choose:
+                                    - conditions: "{{ debug }}"
+                                      sequence:
+                                        - service: logbook.log
+                                          data:
+                                            name: "MotionMode v7"
+                                            message: "LOCKOUT: level change during post-off. Captured override, hands off {{ lockout_timeout_min }} min."
+                                            entity_id: "{{ this.entity_id }}"
+                                - variables:
+                                    lockout_start: "{{ as_timestamp(now()) }}"
+                                    lockout_secs: "{{ lockout_timeout_min | int * 60 }}"
+                                - repeat:
+                                    while:
+                                      - condition: template
+                                        value_template: "{{ (as_timestamp(now()) - lockout_start) < lockout_secs | float }}"
+                                    sequence:
+                                      - variables:
+                                          remaining: "{{ [1, lockout_secs | float - (as_timestamp(now()) - lockout_start)] | max | int }}"
+                                      - wait_for_trigger:
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: brightness
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: color_temp
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: rgb_color
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: hs_color
+                                          - platform: state
+                                            id: "mode_change"
+                                            entity_id: !input mode_helper
+                                        timeout:
+                                          seconds: "{{ remaining }}"
+                                        continue_on_timeout: true
+                                      - choose:
+                                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
+                                            sequence:
+                                              - choose:
+                                                  - conditions: >
+                                                      {% set uid = wait.trigger.to_state.context.user_id %}
+                                                      {% if override_change_source == 'Digital only' %}{{ uid is not none }}
+                                                      {% elif override_change_source == 'Physical only' %}{{ uid is none }}
+                                                      {% else %}true{% endif %}
+                                                    sequence:
+                                                      - variables:
+                                                          override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                                                      - service: scene.create
+                                                        data:
+                                                          scene_id: "{{ override_scene_id }}"
+                                                          snapshot_entities: !input override_capture_lights
+                                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
+                                            sequence:
+                                              - stop: "Lockout ended by mode change (post-off level change)"
+                                - stop: "Post-OFF override lockout timeout expired"
                             # New motion during post-off → re-activate (continue outer loop)
                             - conditions: "{{ wait.trigger is not none and wait.trigger.id in ['motion_on', 'contact_open'] }}"
                               sequence:
