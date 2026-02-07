@@ -6,6 +6,9 @@ blueprint:
     • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
     • AUX-ON/AUX-OFF per mode; camera-based lux bypass; optional lux OFF gate
     • Lockout on manual ON or OFF; override capture during lockout; override resets on mode change
+    • Level override: manual dimmer changes block motion from re-applying or turning off (configurable)
+    • Don't turn on if manually turned off; optional clear on mode change
+    • Auto re-enable at sunrise/sunset/specific time
     • Validation-safe: lights/AUX use target.entity_id (lists), scenes use target.entity_id (HA 2024.6+)
     • v7.0.0: Single-mode event-loop rewrite — no race conditions, no helpers needed,
       bidirectional lockout (manual ON after auto-OFF, manual OFF after auto-ON),
@@ -366,6 +369,35 @@ blueprint:
             select:
               mode: dropdown
               options: ["Digital only", "Physical only", "Any"]
+        enable_level_override:
+          name: "Enable override with dimmer level change"
+          description: >
+            When enabled, manually adjusting the dimmer level prevents motion from changing levels AND from turning off.
+            NOTE: When this option is enabled alone, it will prevent a motion-inactive from turning the lights off
+            and stop additional motion-active events from changing the dimmer level if you manually adjusted it.
+          default: false
+          selector: { boolean: {} }
+        override_level_only:
+          name: "Override for level only? (Will still turn off)"
+          description: >
+            If enabled (with level override above), motion-active events will not change your manual dimmer settings,
+            but when no motion is detected, the lights will still turn off when the off-delay expires.
+          default: false
+          selector: { boolean: {} }
+        dont_turn_on_if_manual_off:
+          name: "Don't turn on if turned off manually"
+          description: >
+            When enabled, the motion sensor will not turn lights on until they are manually turned on again.
+            This prevents motion from immediately re-activating lights when you turn them off but haven't left the room yet.
+          default: false
+          selector: { boolean: {} }
+        clear_manual_off_on_mode_change:
+          name: "Clear manual-off block on next mode change"
+          description: >
+            When enabled, the 'Don't turn on if turned off manually' block is cleared on the next mode change,
+            allowing motion to control lights again.
+          default: true
+          selector: { boolean: {} }
 
     # =========================
     # Misc
@@ -377,15 +409,35 @@ blueprint:
       input:
         force_on_even_if_on:
           name: "Force apply even if already on"
+          description: >
+            Forces motion events to send On commands irrespective of the current state of the lights.
+            Useful when state may be out of sync due to external control, remote bridges, or physical switches.
           default: false
           selector: { boolean: {} }
         disable_off_via_boolean:
           name: "Disable OFF via boolean (e.g., cleaning/party)"
+          description: "When this input_boolean is ON, the automation will not turn lights off."
           default: ""
           selector:
             entity:
               filter:
                 - domain: input_boolean
+        auto_enable_mode:
+          name: "Auto re-enable at time"
+          description: >
+            If the automation is disabled via the boolean toggle above, automatically re-enable
+            at sunrise, sunset, or a specific time. Select 'Disabled' to skip.
+          default: "Disabled"
+          selector:
+            select:
+              mode: dropdown
+              options: ["Disabled", "Sunrise", "Sunset", "Specific time"]
+        auto_enable_time:
+          name: "Auto re-enable specific time"
+          description: "Only used when 'Auto re-enable at time' is set to 'Specific time'."
+          default: "06:00:00"
+          selector:
+            time: {}
         debug_logging:
           name: "Enable debug logbook entries"
           default: false
@@ -474,10 +526,16 @@ variables:
   override_capture_lights_list: !input override_capture_lights
   override_change_source: !input override_change_source
   override_scene_base: "{{ (this.entity_id | replace('.','_')) ~ '_override' }}"
+  enable_level_override: !input enable_level_override
+  override_level_only: !input override_level_only
+  dont_turn_on_manual_off: !input dont_turn_on_if_manual_off
+  clear_block_on_mode: !input clear_manual_off_on_mode_change
 
   # Misc
   force_on_even_if_on: !input force_on_even_if_on
   disable_off_bool: !input disable_off_via_boolean
+  auto_enable_mode_val: !input auto_enable_mode
+  auto_enable_time_val: !input auto_enable_time
   debug: !input debug_logging
 
 trigger:
@@ -494,10 +552,52 @@ trigger:
     id: contact_open_alt
     entity_id: !input contact_sensors
     to: "open"
+  # Auto re-enable triggers
+  - platform: sun
+    id: auto_enable_sunrise
+    event: sunrise
+  - platform: sun
+    id: auto_enable_sunset
+    event: sunset
+  - platform: time
+    id: auto_enable_time
+    at: !input auto_enable_time
 
 condition: []
 
 action:
+  # ── 0. Handle auto re-enable triggers ──
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - auto_enable_sunrise
+              - auto_enable_sunset
+              - auto_enable_time
+        sequence:
+          - choose:
+              - conditions: >
+                  {{ (trigger.id == 'auto_enable_sunrise' and auto_enable_mode_val == 'Sunrise') or
+                     (trigger.id == 'auto_enable_sunset' and auto_enable_mode_val == 'Sunset') or
+                     (trigger.id == 'auto_enable_time' and auto_enable_mode_val == 'Specific time') }}
+                sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ disable_off_bool != '' and is_state(disable_off_bool, 'on') }}"
+                    then:
+                      - service: input_boolean.turn_off
+                        target:
+                          entity_id: "{{ disable_off_bool }}"
+                      - choose:
+                          - conditions: "{{ debug }}"
+                            sequence:
+                              - service: logbook.log
+                                data:
+                                  name: "MotionMode v7"
+                                  message: "AUTO RE-ENABLE: turned off disable boolean at {{ trigger.id }}."
+                                  entity_id: "{{ this.entity_id }}"
+          - stop: "Auto-enable trigger handled"
+
   # ── 1. Compute runtime variables ──
   - variables:
       mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
@@ -833,7 +933,63 @@ action:
                                                   entity_id: "{{ this.entity_id }}"
                           - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
                             sequence:
+                              - if:
+                                  - condition: template
+                                    value_template: "{{ dont_turn_on_manual_off and not clear_block_on_mode }}"
+                                then:
+                                  - choose:
+                                      - conditions: "{{ debug }}"
+                                        sequence:
+                                          - service: logbook.log
+                                            data:
+                                              name: "MotionMode v7"
+                                              message: "BLOCK: Mode changed but dont-turn-on persists. Waiting for manual ON."
+                                              entity_id: "{{ this.entity_id }}"
+                                  - wait_for_trigger:
+                                      - platform: state
+                                        id: "manual_on"
+                                        entity_id: !input lockout_watch_lights
+                                        to: "on"
+                                    timeout:
+                                      hours: 24
+                                    continue_on_timeout: true
                               - stop: "Lockout ended by mode change (override cleared)"
+                # After lockout timeout: check dont_turn_on_manual_off
+                - if:
+                    - condition: template
+                      value_template: "{{ dont_turn_on_manual_off }}"
+                  then:
+                    - choose:
+                        - conditions: "{{ debug }}"
+                          sequence:
+                            - service: logbook.log
+                              data:
+                                name: "MotionMode v7"
+                                message: "BLOCK: Lockout expired but won't respond to motion until manual ON{{ ' or mode change' if clear_block_on_mode else '' }}."
+                                entity_id: "{{ this.entity_id }}"
+                    - repeat:
+                        sequence:
+                          - wait_for_trigger:
+                              - platform: state
+                                id: "manual_on"
+                                entity_id: !input lockout_watch_lights
+                                to: "on"
+                              - platform: state
+                                id: "mode_change_unblock"
+                                entity_id: !input mode_helper
+                            timeout:
+                              hours: 24
+                            continue_on_timeout: true
+                          - choose:
+                              - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'manual_on' }}"
+                                sequence:
+                                  - stop: "Block cleared by manual ON"
+                              - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change_unblock' and clear_block_on_mode }}"
+                                sequence:
+                                  - stop: "Block cleared by mode change"
+                        until:
+                          - condition: template
+                            value_template: "false"
                 - stop: "Lockout timeout expired"
 
             # ── Handle: LEVEL CHANGE (during active) → CAPTURE ──
@@ -1162,7 +1318,63 @@ action:
                                                       snapshot_entities: !input override_capture_lights
                                       - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
                                         sequence:
+                                          - if:
+                                              - condition: template
+                                                value_template: "{{ dont_turn_on_manual_off and not clear_block_on_mode }}"
+                                            then:
+                                              - choose:
+                                                  - conditions: "{{ debug }}"
+                                                    sequence:
+                                                      - service: logbook.log
+                                                        data:
+                                                          name: "MotionMode v7"
+                                                          message: "BLOCK: Mode changed but dont-turn-on persists. Waiting for manual ON."
+                                                          entity_id: "{{ this.entity_id }}"
+                                              - wait_for_trigger:
+                                                  - platform: state
+                                                    id: "manual_on"
+                                                    entity_id: !input lockout_watch_lights
+                                                    to: "on"
+                                                timeout:
+                                                  hours: 24
+                                                continue_on_timeout: true
                                           - stop: "Lockout ended by mode change (off-delay manual off)"
+                            # After lockout timeout: check dont_turn_on_manual_off
+                            - if:
+                                - condition: template
+                                  value_template: "{{ dont_turn_on_manual_off }}"
+                              then:
+                                - choose:
+                                    - conditions: "{{ debug }}"
+                                      sequence:
+                                        - service: logbook.log
+                                          data:
+                                            name: "MotionMode v7"
+                                            message: "BLOCK: Lockout expired but won't respond to motion until manual ON{{ ' or mode change' if clear_block_on_mode else '' }}."
+                                            entity_id: "{{ this.entity_id }}"
+                                - repeat:
+                                    sequence:
+                                      - wait_for_trigger:
+                                          - platform: state
+                                            id: "manual_on"
+                                            entity_id: !input lockout_watch_lights
+                                            to: "on"
+                                          - platform: state
+                                            id: "mode_change_unblock"
+                                            entity_id: !input mode_helper
+                                        timeout:
+                                          hours: 24
+                                        continue_on_timeout: true
+                                      - choose:
+                                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'manual_on' }}"
+                                            sequence:
+                                              - stop: "Block cleared by manual ON"
+                                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change_unblock' and clear_block_on_mode }}"
+                                            sequence:
+                                              - stop: "Block cleared by mode change"
+                                    until:
+                                      - condition: template
+                                        value_template: "false"
                             - stop: "Lockout timeout expired (off-delay manual off)"
                         # Mode change during off-delay → re-apply (continue loop)
                         - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
@@ -1171,9 +1383,23 @@ action:
                         # ── OFF-DELAY EXPIRED: turn off lights ──
                         - variables:
                             mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+                            override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                            level_override_active: >
+                              {{ enable_level_override and not override_level_only and
+                                 states('scene.' ~ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower))
+                                 not in ['unknown','unavailable'] }}
+                        # Level override debug log
+                        - choose:
+                            - conditions: "{{ level_override_active and debug }}"
+                              sequence:
+                                - service: logbook.log
+                                  data:
+                                    name: "MotionMode v7"
+                                    message: "LEVEL OVERRIDE: skipping off, lights stay at manual level."
+                                    entity_id: "{{ this.entity_id }}"
                         - if:
                             - condition: template
-                              value_template: "{{ not disable_off_now }}"
+                              value_template: "{{ not disable_off_now and not level_override_active }}"
                           then:
                             - choose:
                                 - conditions: "{{ mode_now == mode_day }}"
