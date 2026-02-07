@@ -1,19 +1,16 @@
 blueprint:
-  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v6.5.5, HA 2024.6+ fixes)"
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v7.0.0, HA 2024.6+)"
   description: >
     Hubitat-style motion lighting with collapsible sections.
     • Activators: motion/occupancy OR ANY binary sensor (no device class required), contact sensors; plus keep-alive
     • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
     • AUX-ON/AUX-OFF per mode; camera-based lux bypass; optional lux OFF gate
-    • Watch window + lockout on manual OFF; capture level overrides on level/CT/color change
+    • Lockout on manual ON or OFF; override capture during lockout; override resets on mode change
     • Validation-safe: lights/AUX use target.entity_id (lists), scenes use target.entity_id (HA 2024.6+)
-    • v6.5.5: Stateless lockout fallback to avoid restart race without helpers
-    • v6.5.4: Start lockout immediately on manual OFF while occupancy is active
-    • v6.5.3: Fix lux/camera gating, override capture, and off-delay reliability
-    • v6.5.2: Fixed lux trigger with blank sensor, AUX-OFF logic, "Physical only" detection, fallback lockout stop_actions
-    • v6.5.1: Fixed undefined template variables (scene_evening → scene_eve, scene_night → scene_ngt)
-    • v6.5.0: Fixed service calls to use target.entity_id instead of data.entity_id (HA 2024.6+ compatibility)
-    • v6.4.9: Lux sensor truly optional (no save error), "person" domain removed from activators, broader binary_sensor support
+    • v7.0.0: Single-mode event-loop rewrite — no race conditions, no helpers needed,
+      bidirectional lockout (manual ON after auto-OFF, manual OFF after auto-ON),
+      override capture during lockout, override resets on mode change,
+      consolidated lockout timeout (replaces watch window + lockout + override timers)
   domain: automation
   homeassistant:
     min_version: "2024.6.0"
@@ -311,70 +308,42 @@ blueprint:
           selector: { number: { min: 0, max: 86400, step: 1 } }
 
     # =========================
-    # Watch Window, Lockout & Override (minutes)
+    # Lockout & Override
     # =========================
     lockout_override:
-      name: "Watch window, lockout & override"
+      name: "Lockout & override"
       icon: mdi:account-cancel
       collapsed: false
       input:
-        watch_window_minutes:
-          name: "Watch window after activation (minutes)"
-          description: "During this period: Manual OFF ⇒ Lockout; Level change ⇒ Capture override"
-          default: 5
-          selector:
-            number:
-              min: 1
-              max: 60
-              step: 1
-
-        # Manual OFF ⇒ Lockout
         lockout_watch_lights:
-          name: "Lights to watch for MANUAL-OFF"
-          description: "If any is turned OFF during the watch window, start lockout."
+          name: "Lights to watch for MANUAL changes"
+          description: "If any is manually turned ON or OFF, start lockout. Also used for override capture."
           default: []
           selector:
             entity:
               multiple: true
               filter:
                 - domain: light
-        manual_off_lockout_mode:
-          name: "Manual-OFF source to react to"
+        manual_lockout_mode:
+          name: "Manual change source to react to"
           description: "Digital only (UI/app/voice), Physical only (no context), or Any"
           default: "Any"
           selector:
             select:
               mode: dropdown
               options: ["Digital only", "Physical only", "Any"]
-        manual_off_lockout_timeout:
-          name: "Lockout timeout (minutes)"
-          description: "Range 1–120 minutes (1 min to 2 hours)"
+        lockout_timeout:
+          name: "Lockout / override timeout (minutes)"
+          description: "How long automation stays hands-off after a manual change. Override capture also uses this window. Range 1–120."
           default: 15
           selector:
             number:
               min: 1
               max: 120
               step: 1
-        lockout_end_mode:
-          name: "How does lockout end?"
-          default: "Timeout or Mode change"
-          selector:
-            select:
-              mode: dropdown
-              options: ["Timeout", "Until Mode change", "Timeout or Mode change"]
-        lockout_timer:
-          name: "Timer for lockout (optional, recommended)"
-          description: "If set, lockout uses this timer (restart-safe)."
-          default: ""
-          selector:
-            entity:
-              filter:
-                - domain: timer
-
-        # Level change ⇒ Override
         override_capture_lights:
-          name: "Lights to watch for LEVEL changes (capture override)"
-          description: "If a level/CT/color change happens during the watch window, snapshot it and reuse on motion."
+          name: "Lights to capture LEVEL overrides from"
+          description: "If brightness/color changes during active or lockout period, snapshot and reuse on next activation."
           default: []
           selector:
             entity:
@@ -388,30 +357,6 @@ blueprint:
             select:
               mode: dropdown
               options: ["Digital only", "Physical only", "Any"]
-        override_timeout_minutes:
-          name: "Override timeout (minutes)"
-          description: "How long to reuse the captured levels (1–120)"
-          default: 60
-          selector:
-            number:
-              min: 1
-              max: 120
-              step: 1
-        override_end_mode:
-          name: "When should override end?"
-          default: "Timeout or Mode change"
-          selector:
-            select:
-              mode: dropdown
-              options: ["Timeout", "Until Mode change", "Timeout or Mode change"]
-        override_timer:
-          name: "Timer for override (optional, recommended)"
-          description: "If set, we keep override active with this timer (restart-safe)."
-          default: ""
-          selector:
-            entity:
-              filter:
-                - domain: timer
 
     # =========================
     # Misc
@@ -438,7 +383,8 @@ blueprint:
           selector: { boolean: {} }
 
 # ====== Runtime
-mode: restart
+mode: single
+max_exceeded: silent
 
 variables:
   # Sensors & lux
@@ -479,7 +425,6 @@ variables:
   mode_day: !input mode_day_value
   mode_eve: !input mode_evening_value
   mode_ngt: !input mode_night_value
-  mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
 
   # Per-mode scenes/entities/levels
   scene_day: !input scene_day
@@ -511,40 +456,22 @@ variables:
   day_off: !input day_off_delay
   eve_off: !input evening_off_delay
   ngt_off: !input night_off_delay
-  off_delay: >
-    {% set m = mode_now %}
-    {% if m == mode_day %}{{ day_off }}
-    {% elif m == mode_eve %}{{ eve_off }}
-    {% elif m == mode_ngt %}{{ ngt_off }}
-    {% else %}{{ day_off }}{% endif %}
 
-  # Watch window & lockout (MINUTES)
-  watch_window: !input watch_window_minutes
+  # Lockout & override
   lockout_watch: !input lockout_watch_lights
-  lockout_mode: !input manual_off_lockout_mode
-  lockout_timeout_min: !input manual_off_lockout_timeout
-  lockout_end_mode: !input lockout_end_mode
-  lockout_timer: !input lockout_timer
-
-  # Override capture (MINUTES)
-  override_capture_lights: !input override_capture_lights
+  lockout_mode: !input manual_lockout_mode
+  lockout_timeout_min: !input lockout_timeout
+  override_capture_lights_list: !input override_capture_lights
   override_change_source: !input override_change_source
-  override_timeout_min: !input override_timeout_minutes
-  override_end_mode: !input override_end_mode
-  override_timer: !input override_timer
-  override_scene_id: "{{ (this.entity_id | replace('.','_')) ~ '_level_override' }}"
+  override_scene_base: "{{ (this.entity_id | replace('.','_')) ~ '_override' }}"
 
   # Misc
   force_on_even_if_on: !input force_on_even_if_on
   disable_off_bool: !input disable_off_via_boolean
   debug: !input debug_logging
 
-trigger_variables:
-  lux_sensor_input: !input lux_sensor
-  off_lux_min_input: !input off_lux_min
-
 trigger:
-  # Activators (ANY binary_sensor -> on; Contacts -> on/open)
+  # Activation only — all other events handled inside the event loop
   - platform: state
     id: motion_on
     entity_id: !input motion_or_presence_sensors
@@ -557,51 +484,6 @@ trigger:
     id: contact_open_alt
     entity_id: !input contact_sensors
     to: "open"
-
-  # Manual-OFF (lockout) — immediate
-  - platform: state
-    id: manual_off
-    entity_id: !input lockout_watch_lights
-    to: "off"
-
-  # Idle/closed → for timer-based OFF
-  - platform: state
-    id: motion_off
-    entity_id: !input motion_or_presence_sensors
-    to: "off"
-  - platform: state
-    id: contact_closed
-    entity_id: !input contact_sensors
-    to: "off"
-  - platform: state
-    id: contact_closed_alt
-    entity_id: !input contact_sensors
-    to: "closed"
-
-  # Keepalive (handle on/open)
-  - platform: state
-    id: keepalive_on
-    entity_id: !input keepalive_sensors
-    to: "on"
-  - platform: state
-    id: keepalive_open
-    entity_id: !input keepalive_sensors
-    to: "open"
-
-  # Mode change
-  - platform: state
-    id: mode_change
-    entity_id: !input mode_helper
-
-  # Lux-based immediate OFF (template trigger; SAFE if lux sensor is blank)
-  - platform: template
-    id: lux_off
-    value_template: >-
-      {% if lux_sensor_input and lux_sensor_input != '' and off_lux_min_input > 0 %}
-        {{ states(lux_sensor_input) | float(0) >= off_lux_min_input }}
-      {% else %}
-        false
-      {% endif %}
 
 condition: []
 
@@ -651,43 +533,6 @@ action:
         {% endif %}
 
   - choose:
-
-      # MANUAL-OFF (immediate): start lockout if occupancy is still active
-      - conditions:
-          - condition: trigger
-            id: manual_off
-          - condition: template
-            value_template: "{{ any_motion_on or any_contact_open or any_keepalive_on }}"
-          - condition: template
-            value_template: >
-              {% set uid = trigger.to_state.context.user_id %}
-              {% if lockout_mode == 'Digital only' %}
-                {{ uid is not none }}
-              {% elif lockout_mode == 'Physical only' %}
-                {{ uid is none }}
-              {% else %} true {% endif %}
-        sequence:
-          - choose:
-              - conditions: "{{ (lockout_timer | default('')) != '' }}"
-                sequence:
-                  - service: timer.start
-                    target:
-                      entity_id: "{{ lockout_timer }}"
-                    data:
-                      duration: "{{ (lockout_timeout_min|int) * 60 }}"
-              - conditions: []
-                sequence:
-                  - service: automation.turn_off
-                    target:
-                      entity_id: "{{ this.entity_id }}"
-                    data:
-                      stop_actions: false
-                  - delay:
-                      minutes: "{{ lockout_timeout_min|int }}"
-                  - service: automation.turn_on
-                    target:
-                      entity_id: "{{ this.entity_id }}"
-          - stop: "Manual OFF lockout started"
 
       # MODE CHANGE: cancel timers depending on policy
       - conditions:

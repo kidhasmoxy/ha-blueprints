@@ -1,0 +1,1339 @@
+blueprint:
+  name: "Motion & Mode Lighting — Per-Mode Scenes/Entities + AUX (v7.0.0, HA 2024.6+)"
+  description: >
+    Hubitat-style motion lighting with collapsible sections.
+    • Activators: motion/occupancy OR ANY binary sensor (no device class required), contact sensors; plus keep-alive
+    • Per-mode: optional Scene OR explicit Light Entities (+ brightness/color for Entities)
+    • AUX-ON/AUX-OFF per mode; camera-based lux bypass; optional lux OFF gate
+    • Lockout on manual ON or OFF; override capture during lockout; override resets on mode change
+    • Validation-safe: lights/AUX use target.entity_id (lists), scenes use target.entity_id (HA 2024.6+)
+    • v7.0.0: Single-mode event-loop rewrite — no race conditions, no helpers needed,
+      bidirectional lockout (manual ON after auto-OFF, manual OFF after auto-ON),
+      override capture during lockout, override resets on mode change,
+      consolidated lockout timeout (replaces watch window + lockout + override timers)
+  domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
+
+  input:
+    # =========================
+    # Activation Sensors
+    # =========================
+    activation:
+      name: "Activation sensors"
+      icon: mdi:motion-sensor
+      collapsed: false
+      input:
+        motion_or_presence_sensors:
+          name: "Motion / Occupancy / ANY Binary Sensor (activate)"
+          description: >
+            Any of these going to 'on' activates. You can include plain binary_sensors with no device_class.
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+        contact_sensors:
+          name: "Contact sensors (activate on open)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+                  device_class: door
+                - domain: binary_sensor
+                  device_class: window
+                - domain: binary_sensor
+                  device_class: opening
+        keepalive_sensors:
+          name: "Keep-alive sensors (don't activate)"
+          description: Any binary sensor that should keep lights on (no activation).
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+
+    # =========================
+    # Lux & Camera Force-ON
+    # =========================
+    lux:
+      name: "Lux conditions (with camera force-on)"
+      icon: mdi:weather-sunny-alert
+      collapsed: true
+      input:
+        lux_sensor:
+          name: "Illuminance (optional)"
+          description: "Leave blank to disable lux gates."
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: illuminance
+        on_lux_max:
+          name: "Only turn ON if lux below"
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 5000
+              unit_of_measurement: lx
+              mode: box
+        off_lux_min:
+          name: "Turn OFF if lux ≥"
+          description: "If lux sensor is blank, this OFF gate is ignored."
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 5000
+              unit_of_measurement: lx
+              mode: box
+
+        # Camera / "night mode" force-ON gates
+        force_on_value_sensors:
+          name: "Force-ON: value sensors"
+          description: "Sensors whose *value* forces ON (e.g., camera color mode)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: sensor
+        force_on_match_values:
+          name: "Match values (comma-separated)"
+          description: "Case-insensitive values that force ON (e.g., black and white,bw,night)"
+          default: "black and white,bw,night"
+          selector: { text: {} }
+        force_on_binary_sensors:
+          name: "Force-ON: binary sensors"
+          description: "Binary sensors that force ON when at the chosen state (e.g., camera night mode)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+        force_on_binary_state:
+          name: "Binary force-ON state"
+          description: "Which state of the binary sensors should force ON"
+          default: "on"
+          selector:
+            select:
+              mode: dropdown
+              options: ["on", "off"]
+
+    # =========================
+    # Modes & Labels
+    # =========================
+    modes:
+      name: "Modes & per-mode setup"
+      icon: mdi:theme-light-dark
+      collapsed: false
+      input:
+        mode_helper:
+          name: "Mode helper (input_select)"
+          selector:
+            entity:
+              filter:
+                - domain: input_select
+        mode_day_value:
+          name: "Mode label — Day"
+          default: Day
+          selector: { text: {} }
+        mode_evening_value:
+          name: "Mode label — Evening"
+          default: Evening
+          selector: { text: {} }
+        mode_night_value:
+          name: "Mode label — Night"
+          default: Night
+          selector: { text: {} }
+
+    # ---- Day section ----
+    mode_day_section:
+      name: "Mode: Day"
+      icon: mdi:white-balance-sunny
+      collapsed: false
+      input:
+        scene_day:
+          name: "Scene (optional)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: scene
+        entities_day:
+          name: "Light entities (used if no Scene)"
+          description: "Pick light entities (not areas/devices)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: light
+        day_brightness:
+          name: "Brightness % (for Entities)"
+          default: 100
+          selector: { number: { min: 1, max: 100, step: 1 } }
+        day_kelvin:
+          name: "Color temperature (Kelvin, 0=skip)"
+          default: 0
+          selector: { number: { min: 0, max: 6500, step: 50 } }
+        day_rgb:
+          name: "RGB color (optional)"
+          description: If set, overrides Kelvin.
+          default: []
+          selector: { color_rgb: }
+        aux_on_day_entities:
+          name: "AUX-ON (also turn on — entities)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+        aux_off_day_entities:
+          name: "AUX-OFF (also turn off — entities)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+        day_off_delay:
+          name: "Off-delay seconds"
+          default: 900
+          selector: { number: { min: 0, max: 86400, step: 1 } }
+
+    # ---- Evening section ----
+    mode_evening_section:
+      name: "Mode: Evening"
+      icon: mdi:weather-sunset
+      collapsed: true
+      input:
+        scene_evening:
+          name: "Scene (optional)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: scene
+        entities_evening:
+          name: "Light entities (used if no Scene)"
+          description: "Pick light entities (not areas/devices)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: light
+        evening_brightness:
+          name: "Brightness % (for Entities)"
+          default: 100
+          selector: { number: { min: 1, max: 100, step: 1 } }
+        evening_kelvin:
+          name: "Color temperature (Kelvin, 0=skip)"
+          default: 3000
+          selector: { number: { min: 0, max: 6500, step: 50 } }
+        evening_rgb:
+          name: "RGB color (optional)"
+          default: []
+          selector: { color_rgb: }
+        aux_on_evening_entities:
+          name: "AUX-ON (also turn on — entities)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+        aux_off_evening_entities:
+          name: "AUX-OFF (also turn off — entities)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+        evening_off_delay:
+          name: "Off-delay seconds"
+          default: 900
+          selector: { number: { min: 0, max: 86400, step: 1 } }
+
+    # ---- Night section ----
+    mode_night_section:
+      name: "Mode: Night"
+      icon: mdi:weather-night
+      collapsed: true
+      input:
+        scene_night:
+          name: "Scene (optional)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: scene
+        entities_night:
+          name: "Light entities (used if no Scene)"
+          description: "Pick light entities (not areas/devices)."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: light
+        night_brightness:
+          name: "Brightness % (for Entities)"
+          default: 10
+          selector: { number: { min: 1, max: 100, step: 1 } }
+        night_kelvin:
+          name: "Color temperature (Kelvin, 0=skip)"
+          default: 2000
+          selector: { number: { min: 0, max: 6500, step: 50 } }
+        night_rgb:
+          name: "RGB color (optional)"
+          default: []
+          selector: { color_rgb: }
+        aux_on_night_entities:
+          name: "AUX-ON (also turn on — entities)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+        aux_off_night_entities:
+          name: "AUX-OFF (also turn off — entities)"
+          default: []
+          selector:
+            entity:
+              multiple: true
+        night_off_delay:
+          name: "Off-delay seconds"
+          default: 60
+          selector: { number: { min: 0, max: 86400, step: 1 } }
+
+    # =========================
+    # Lockout & Override
+    # =========================
+    lockout_override:
+      name: "Lockout & override"
+      icon: mdi:account-cancel
+      collapsed: false
+      input:
+        lockout_watch_lights:
+          name: "Lights to watch for MANUAL changes"
+          description: "If any is manually turned ON or OFF, start lockout. Also used for override capture."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: light
+        manual_lockout_mode:
+          name: "Manual change source to react to"
+          description: "Digital only (UI/app/voice), Physical only (no context), or Any"
+          default: "Any"
+          selector:
+            select:
+              mode: dropdown
+              options: ["Digital only", "Physical only", "Any"]
+        lockout_timeout:
+          name: "Lockout / override timeout (minutes)"
+          description: "How long automation stays hands-off after a manual change. Override capture also uses this window. Range 1–120."
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 120
+              step: 1
+        override_capture_lights:
+          name: "Lights to capture LEVEL overrides from"
+          description: "If brightness/color changes during active or lockout period, snapshot and reuse on next activation."
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: light
+        override_change_source:
+          name: "Whose changes count for override capture?"
+          default: "Any"
+          selector:
+            select:
+              mode: dropdown
+              options: ["Digital only", "Physical only", "Any"]
+
+    # =========================
+    # Misc
+    # =========================
+    misc:
+      name: "Misc options"
+      icon: mdi:tune
+      collapsed: true
+      input:
+        force_on_even_if_on:
+          name: "Force apply even if already on"
+          default: false
+          selector: { boolean: {} }
+        disable_off_via_boolean:
+          name: "Disable OFF via boolean (e.g., cleaning/party)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+        debug_logging:
+          name: "Enable debug logbook entries"
+          default: false
+          selector: { boolean: {} }
+
+# ====== Runtime
+mode: single
+max_exceeded: silent
+
+variables:
+  # Sensors & lux
+  motion_list: !input motion_or_presence_sensors
+  contacts_list: !input contact_sensors
+  keepalive_list: !input keepalive_sensors
+  lux_entity: !input lux_sensor
+  on_lux_max: !input on_lux_max
+  off_lux_min: !input off_lux_min
+
+  # Camera / override-for-lux inputs
+  force_on_value_sensors: !input force_on_value_sensors
+  force_on_match_values: !input force_on_match_values
+  force_on_binary_sensors: !input force_on_binary_sensors
+  force_on_binary_state: !input force_on_binary_state
+
+  # Compute: camera indicates it's dark?
+  force_cam_on: >
+    {% set vals = (force_on_match_values | default('') | lower).split(',') | map('trim') | select('string') | list %}
+    {% set val_hit = (
+      expand(force_on_value_sensors)
+      | map(attribute='state')
+      | map('lower')
+      | select('in', vals)
+      | list
+      | length > 0
+    ) if vals | length > 0 else false %}
+    {% set bin_hit = (
+      expand(force_on_binary_sensors)
+      | selectattr('state','eq', force_on_binary_state)
+      | list
+      | length > 0
+    ) %}
+    {{ val_hit or bin_hit }}
+
+  # Modes
+  mode_entity: !input mode_helper
+  mode_day: !input mode_day_value
+  mode_eve: !input mode_evening_value
+  mode_ngt: !input mode_night_value
+
+  # Per-mode scenes/entities/levels
+  scene_day: !input scene_day
+  scene_eve: !input scene_evening
+  scene_ngt: !input scene_night
+
+  entities_day: !input entities_day
+  entities_eve: !input entities_evening
+  entities_ngt: !input entities_night
+
+  day_bri: !input day_brightness
+  eve_bri: !input evening_brightness
+  ngt_bri: !input night_brightness
+  day_kelvin: !input day_kelvin
+  eve_kelvin: !input evening_kelvin
+  ngt_kelvin: !input night_kelvin
+  day_rgb: !input day_rgb
+  eve_rgb: !input evening_rgb
+  ngt_rgb: !input night_rgb
+
+  aux_on_day_entities: !input aux_on_day_entities
+  aux_on_eve_entities: !input aux_on_evening_entities
+  aux_on_ngt_entities: !input aux_on_night_entities
+  aux_off_day_entities: !input aux_off_day_entities
+  aux_off_eve_entities: !input aux_off_evening_entities
+  aux_off_ngt_entities: !input aux_off_night_entities
+
+  # Off delays
+  day_off: !input day_off_delay
+  eve_off: !input evening_off_delay
+  ngt_off: !input night_off_delay
+
+  # Lockout & override
+  lockout_watch: !input lockout_watch_lights
+  lockout_mode: !input manual_lockout_mode
+  lockout_timeout_min: !input lockout_timeout
+  override_capture_lights_list: !input override_capture_lights
+  override_change_source: !input override_change_source
+  override_scene_base: "{{ (this.entity_id | replace('.','_')) ~ '_override' }}"
+
+  # Misc
+  force_on_even_if_on: !input force_on_even_if_on
+  disable_off_bool: !input disable_off_via_boolean
+  debug: !input debug_logging
+
+trigger:
+  # Activation only — all other events handled inside the event loop
+  - platform: state
+    id: motion_on
+    entity_id: !input motion_or_presence_sensors
+    to: "on"
+  - platform: state
+    id: contact_open
+    entity_id: !input contact_sensors
+    to: "on"
+  - platform: state
+    id: contact_open_alt
+    entity_id: !input contact_sensors
+    to: "open"
+
+condition: []
+
+action:
+  # ── 1. Compute runtime variables ──
+  - variables:
+      mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+      off_delay: >
+        {% set m = states(mode_entity) if mode_entity else 'Day' %}
+        {% if m == mode_day %}{{ day_off }}{% elif m == mode_eve %}{{ eve_off }}
+        {% elif m == mode_ngt %}{{ ngt_off }}{% else %}{{ day_off }}{% endif %}
+      override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+      disable_off_now: "{{ is_state(disable_off_bool,'on') if disable_off_bool else false }}"
+      lux_has_valid: >
+        {% if lux_entity and on_lux_max|int > 0 %}
+          {{ states(lux_entity) not in ['unknown','unavailable','none'] }}
+        {% else %}false{% endif %}
+      lux_ok_to_on: >
+        {% if lux_entity and on_lux_max|int > 0 %}
+          {% if states(lux_entity) in ['unknown','unavailable','none'] %}true
+          {% else %}{{ states(lux_entity)|float(9999) < on_lux_max|int }}{% endif %}
+        {% else %}true{% endif %}
+
+  # ── 2. Gate: lux or camera force-on ──
+  - condition: template
+    value_template: "{{ lux_ok_to_on or (force_cam_on and not lux_has_valid) }}"
+
+  # ── 3. Debug log ──
+  - choose:
+      - conditions: "{{ debug }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "MotionMode v7"
+              message: >
+                ACTIVATE: Mode='{{ mode_now }}'; lux_ok={{ lux_ok_to_on }}, cam={{ force_cam_on }};
+                override_scene={{ override_scene_id }}.
+              entity_id: "{{ this.entity_id }}"
+
+  # ── 4. Guard: no targets for current mode ──
+  - choose:
+      - conditions: >
+          {% set m = mode_now %}
+          {{ (m == mode_day and (scene_day == '' and (entities_day|length)==0)) or
+             (m == mode_eve and (scene_eve == '' and (entities_eve|length)==0)) or
+             (m == mode_ngt and (scene_ngt == '' and (entities_ngt|length)==0)) or
+             (m not in [mode_day, mode_eve, mode_ngt]) }}
+        sequence:
+          - stop: "No targets for current mode"
+
+  # ── 5. Apply lighting: override scene OR per-mode ──
+  - choose:
+      - conditions: "{{ states('scene.' ~ override_scene_id) not in ['unknown','unavailable'] }}"
+        sequence:
+          - service: scene.turn_on
+            target:
+              entity_id: "scene.{{ override_scene_id }}"
+          - choose:
+              - conditions: "{{ debug }}"
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: "MotionMode v7"
+                      message: "Applied OVERRIDE scene.{{ override_scene_id }}"
+                      entity_id: "{{ this.entity_id }}"
+    default:
+      # Apply per-mode scene/entities + AUX
+      - choose:
+          - conditions: "{{ mode_now == mode_day }}"
+            sequence:
+              - choose:
+                  - conditions: "{{ scene_day != '' }}"
+                    sequence:
+                      - service: scene.turn_on
+                        target:
+                          entity_id: "{{ scene_day }}"
+              - choose:
+                  - conditions: "{{ entities_day | length > 0 }}"
+                    sequence:
+                      - choose:
+                          - conditions: "{{ (day_rgb | length) > 0 }}"
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_day
+                                data:
+                                  brightness_pct: "{{ day_bri|int }}"
+                                  rgb_color: "{{ day_rgb }}"
+                          - conditions: "{{ (day_rgb | length) == 0 and day_kelvin|int > 0 }}"
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_day
+                                data:
+                                  brightness_pct: "{{ day_bri|int }}"
+                                  color_temp_kelvin: "{{ day_kelvin|int }}"
+                          - conditions: []
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_day
+                                data:
+                                  brightness_pct: "{{ day_bri|int }}"
+              - choose:
+                  - conditions: "{{ aux_on_day_entities | length > 0 }}"
+                    sequence:
+                      - service: homeassistant.turn_on
+                        target:
+                          entity_id: !input aux_on_day_entities
+
+          - conditions: "{{ mode_now == mode_eve }}"
+            sequence:
+              - choose:
+                  - conditions: "{{ scene_eve != '' }}"
+                    sequence:
+                      - service: scene.turn_on
+                        target:
+                          entity_id: "{{ scene_eve }}"
+              - choose:
+                  - conditions: "{{ entities_eve | length > 0 }}"
+                    sequence:
+                      - choose:
+                          - conditions: "{{ (eve_rgb | length) > 0 }}"
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_evening
+                                data:
+                                  brightness_pct: "{{ eve_bri|int }}"
+                                  rgb_color: "{{ eve_rgb }}"
+                          - conditions: "{{ (eve_rgb | length) == 0 and eve_kelvin|int > 0 }}"
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_evening
+                                data:
+                                  brightness_pct: "{{ eve_bri|int }}"
+                                  color_temp_kelvin: "{{ eve_kelvin|int }}"
+                          - conditions: []
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_evening
+                                data:
+                                  brightness_pct: "{{ eve_bri|int }}"
+              - choose:
+                  - conditions: "{{ aux_on_eve_entities | length > 0 }}"
+                    sequence:
+                      - service: homeassistant.turn_on
+                        target:
+                          entity_id: !input aux_on_evening_entities
+
+          - conditions: "{{ mode_now == mode_ngt }}"
+            sequence:
+              - choose:
+                  - conditions: "{{ scene_ngt != '' }}"
+                    sequence:
+                      - service: scene.turn_on
+                        target:
+                          entity_id: "{{ scene_ngt }}"
+              - choose:
+                  - conditions: "{{ entities_ngt | length > 0 }}"
+                    sequence:
+                      - choose:
+                          - conditions: "{{ (ngt_rgb | length) > 0 }}"
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_night
+                                data:
+                                  brightness_pct: "{{ ngt_bri|int }}"
+                                  rgb_color: "{{ ngt_rgb }}"
+                          - conditions: "{{ (ngt_rgb | length) == 0 and ngt_kelvin|int > 0 }}"
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_night
+                                data:
+                                  brightness_pct: "{{ ngt_bri|int }}"
+                                  color_temp_kelvin: "{{ ngt_kelvin|int }}"
+                          - conditions: []
+                            sequence:
+                              - service: light.turn_on
+                                target:
+                                  entity_id: !input entities_night
+                                data:
+                                  brightness_pct: "{{ ngt_bri|int }}"
+              - choose:
+                  - conditions: "{{ aux_on_ngt_entities | length > 0 }}"
+                    sequence:
+                      - service: homeassistant.turn_on
+                        target:
+                          entity_id: !input aux_on_night_entities
+
+  # ══════════════════════════════════════
+  # 6. MAIN EVENT LOOP
+  # ══════════════════════════════════════
+  - repeat:
+      sequence:
+        # Wait for any relevant event
+        - wait_for_trigger:
+            # Occupancy sensors going inactive
+            - platform: state
+              id: "occ_off"
+              entity_id: !input motion_or_presence_sensors
+              to: "off"
+            - platform: state
+              id: "occ_off"
+              entity_id: !input contact_sensors
+              to: "off"
+            - platform: state
+              id: "occ_off"
+              entity_id: !input contact_sensors
+              to: "closed"
+            - platform: state
+              id: "occ_off"
+              entity_id: !input keepalive_sensors
+              to: "off"
+            - platform: state
+              id: "occ_off"
+              entity_id: !input keepalive_sensors
+              to: "closed"
+            # Manual light OFF
+            - platform: state
+              id: "manual_off"
+              entity_id: !input lockout_watch_lights
+              to: "off"
+            # Level/color changes on override capture lights
+            - platform: state
+              id: "level_change"
+              entity_id: !input override_capture_lights
+              attribute: brightness
+            - platform: state
+              id: "level_change"
+              entity_id: !input override_capture_lights
+              attribute: color_temp
+            - platform: state
+              id: "level_change"
+              entity_id: !input override_capture_lights
+              attribute: rgb_color
+            - platform: state
+              id: "level_change"
+              entity_id: !input override_capture_lights
+              attribute: hs_color
+            # Mode change
+            - platform: state
+              id: "mode_change"
+              entity_id: !input mode_helper
+            # Lux-based OFF
+            - platform: template
+              id: "lux_off"
+              value_template: >
+                {% if lux_entity and off_lux_min | int > 0 %}
+                  {{ states(lux_entity) | float(0) >= off_lux_min | int }}
+                {% else %}false{% endif %}
+          timeout:
+            hours: 24
+          continue_on_timeout: true
+
+        # ── Handle: MANUAL OFF → LOCKOUT ──
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ wait.trigger is not none and wait.trigger.id == 'manual_off' }}"
+                - condition: template
+                  value_template: >
+                    {% set uid = wait.trigger.to_state.context.user_id %}
+                    {% if lockout_mode == 'Digital only' %}{{ uid is not none }}
+                    {% elif lockout_mode == 'Physical only' %}{{ uid is none }}
+                    {% else %}true{% endif %}
+              sequence:
+                - choose:
+                    - conditions: "{{ debug }}"
+                      sequence:
+                        - service: logbook.log
+                          data:
+                            name: "MotionMode v7"
+                            message: "LOCKOUT: manual OFF detected, hands off for {{ lockout_timeout_min }} min."
+                            entity_id: "{{ this.entity_id }}"
+                - variables:
+                    lockout_start: "{{ as_timestamp(now()) }}"
+                    lockout_secs: "{{ lockout_timeout_min | int * 60 }}"
+                # Lockout sub-loop: wait for level_change or mode_change, else timeout
+                - repeat:
+                    while:
+                      - condition: template
+                        value_template: "{{ (as_timestamp(now()) - lockout_start) < lockout_secs | float }}"
+                    sequence:
+                      - variables:
+                          remaining: "{{ [1, lockout_secs | float - (as_timestamp(now()) - lockout_start)] | max | int }}"
+                      - wait_for_trigger:
+                          - platform: state
+                            id: "level_change"
+                            entity_id: !input override_capture_lights
+                            attribute: brightness
+                          - platform: state
+                            id: "level_change"
+                            entity_id: !input override_capture_lights
+                            attribute: color_temp
+                          - platform: state
+                            id: "level_change"
+                            entity_id: !input override_capture_lights
+                            attribute: rgb_color
+                          - platform: state
+                            id: "level_change"
+                            entity_id: !input override_capture_lights
+                            attribute: hs_color
+                          - platform: state
+                            id: "mode_change"
+                            entity_id: !input mode_helper
+                        timeout:
+                          seconds: "{{ remaining }}"
+                        continue_on_timeout: true
+                      - choose:
+                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
+                            sequence:
+                              - choose:
+                                  - conditions: >
+                                      {% set uid = wait.trigger.to_state.context.user_id %}
+                                      {% if override_change_source == 'Digital only' %}{{ uid is not none }}
+                                      {% elif override_change_source == 'Physical only' %}{{ uid is none }}
+                                      {% else %}true{% endif %}
+                                    sequence:
+                                      - variables:
+                                          override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                                      - service: scene.create
+                                        data:
+                                          scene_id: "{{ override_scene_id }}"
+                                          snapshot_entities: !input override_capture_lights
+                                      - choose:
+                                          - conditions: "{{ debug }}"
+                                            sequence:
+                                              - service: logbook.log
+                                                data:
+                                                  name: "MotionMode v7"
+                                                  message: "LOCKOUT: captured override scene.{{ override_scene_id }}"
+                                                  entity_id: "{{ this.entity_id }}"
+                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
+                            sequence:
+                              - stop: "Lockout ended by mode change (override cleared)"
+                - stop: "Lockout timeout expired"
+
+            # ── Handle: LEVEL CHANGE (during active) → CAPTURE ──
+            - conditions:
+                - condition: template
+                  value_template: >
+                    {{ wait.trigger is not none and wait.trigger.id == 'level_change' and
+                       wait.trigger.to_state.state == 'on' }}
+                - condition: template
+                  value_template: >
+                    {% set uid = wait.trigger.to_state.context.user_id %}
+                    {% if override_change_source == 'Digital only' %}{{ uid is not none }}
+                    {% elif override_change_source == 'Physical only' %}{{ uid is none }}
+                    {% else %}true{% endif %}
+              sequence:
+                - variables:
+                    override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                - service: scene.create
+                  data:
+                    scene_id: "{{ override_scene_id }}"
+                    snapshot_entities: !input override_capture_lights
+                - choose:
+                    - conditions: "{{ debug }}"
+                      sequence:
+                        - service: logbook.log
+                          data:
+                            name: "MotionMode v7"
+                            message: "OVERRIDE: captured scene.{{ override_scene_id }}"
+                            entity_id: "{{ this.entity_id }}"
+
+            # ── Handle: MODE CHANGE → CLEAR OVERRIDE, RE-APPLY ──
+            - conditions:
+                - condition: template
+                  value_template: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
+              sequence:
+                - choose:
+                    - conditions: "{{ debug }}"
+                      sequence:
+                        - service: logbook.log
+                          data:
+                            name: "MotionMode v7"
+                            message: "MODE CHANGE to '{{ states(mode_entity) }}'. Re-applying lighting."
+                            entity_id: "{{ this.entity_id }}"
+                # Re-compute mode variables
+                - variables:
+                    mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+                    off_delay: >
+                      {% set m = states(mode_entity) if mode_entity else 'Day' %}
+                      {% if m == mode_day %}{{ day_off }}{% elif m == mode_eve %}{{ eve_off }}
+                      {% elif m == mode_ngt %}{{ ngt_off }}{% else %}{{ day_off }}{% endif %}
+                    override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                # Re-apply per-mode (override resets because scene ID changed with mode)
+                - choose:
+                    - conditions: "{{ states('scene.' ~ override_scene_id) not in ['unknown','unavailable'] }}"
+                      sequence:
+                        - service: scene.turn_on
+                          target:
+                            entity_id: "scene.{{ override_scene_id }}"
+                  default:
+                    - choose:
+                        - conditions: "{{ mode_now == mode_day and entities_day | length > 0 }}"
+                          sequence:
+                            - choose:
+                                - conditions: "{{ (day_rgb | length) > 0 }}"
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_day
+                                      data:
+                                        brightness_pct: "{{ day_bri|int }}"
+                                        rgb_color: "{{ day_rgb }}"
+                                - conditions: "{{ (day_rgb | length) == 0 and day_kelvin|int > 0 }}"
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_day
+                                      data:
+                                        brightness_pct: "{{ day_bri|int }}"
+                                        color_temp_kelvin: "{{ day_kelvin|int }}"
+                                - conditions: []
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_day
+                                      data:
+                                        brightness_pct: "{{ day_bri|int }}"
+                        - conditions: "{{ mode_now == mode_eve and entities_eve | length > 0 }}"
+                          sequence:
+                            - choose:
+                                - conditions: "{{ (eve_rgb | length) > 0 }}"
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_evening
+                                      data:
+                                        brightness_pct: "{{ eve_bri|int }}"
+                                        rgb_color: "{{ eve_rgb }}"
+                                - conditions: "{{ (eve_rgb | length) == 0 and eve_kelvin|int > 0 }}"
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_evening
+                                      data:
+                                        brightness_pct: "{{ eve_bri|int }}"
+                                        color_temp_kelvin: "{{ eve_kelvin|int }}"
+                                - conditions: []
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_evening
+                                      data:
+                                        brightness_pct: "{{ eve_bri|int }}"
+                        - conditions: "{{ mode_now == mode_ngt and entities_ngt | length > 0 }}"
+                          sequence:
+                            - choose:
+                                - conditions: "{{ (ngt_rgb | length) > 0 }}"
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_night
+                                      data:
+                                        brightness_pct: "{{ ngt_bri|int }}"
+                                        rgb_color: "{{ ngt_rgb }}"
+                                - conditions: "{{ (ngt_rgb | length) == 0 and ngt_kelvin|int > 0 }}"
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_night
+                                      data:
+                                        brightness_pct: "{{ ngt_bri|int }}"
+                                        color_temp_kelvin: "{{ ngt_kelvin|int }}"
+                                - conditions: []
+                                  sequence:
+                                    - service: light.turn_on
+                                      target:
+                                        entity_id: !input entities_night
+                                      data:
+                                        brightness_pct: "{{ ngt_bri|int }}"
+
+            # ── Handle: LUX OFF → TURN OFF, END ──
+            - conditions:
+                - condition: template
+                  value_template: "{{ wait.trigger is not none and wait.trigger.id == 'lux_off' }}"
+                - condition: template
+                  value_template: "{{ not disable_off_now }}"
+              sequence:
+                - choose:
+                    - conditions: "{{ debug }}"
+                      sequence:
+                        - service: logbook.log
+                          data:
+                            name: "MotionMode v7"
+                            message: "LUX-OFF: turning off lights."
+                            entity_id: "{{ this.entity_id }}"
+                - variables:
+                    mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+                - choose:
+                    - conditions: "{{ mode_now == mode_day }}"
+                      sequence:
+                        - choose:
+                            - conditions: "{{ entities_day | length > 0 }}"
+                              sequence:
+                                - service: homeassistant.turn_off
+                                  target:
+                                    entity_id: !input entities_day
+                        - choose:
+                            - conditions: "{{ aux_on_day_entities | length > 0 }}"
+                              sequence:
+                                - service: homeassistant.turn_off
+                                  target:
+                                    entity_id: !input aux_on_day_entities
+                    - conditions: "{{ mode_now == mode_eve }}"
+                      sequence:
+                        - choose:
+                            - conditions: "{{ entities_eve | length > 0 }}"
+                              sequence:
+                                - service: homeassistant.turn_off
+                                  target:
+                                    entity_id: !input entities_evening
+                        - choose:
+                            - conditions: "{{ aux_on_eve_entities | length > 0 }}"
+                              sequence:
+                                - service: homeassistant.turn_off
+                                  target:
+                                    entity_id: !input aux_on_evening_entities
+                    - conditions: "{{ mode_now == mode_ngt }}"
+                      sequence:
+                        - choose:
+                            - conditions: "{{ entities_ngt | length > 0 }}"
+                              sequence:
+                                - service: homeassistant.turn_off
+                                  target:
+                                    entity_id: !input entities_night
+                        - choose:
+                            - conditions: "{{ aux_on_ngt_entities | length > 0 }}"
+                              sequence:
+                                - service: homeassistant.turn_off
+                                  target:
+                                    entity_id: !input aux_on_night_entities
+                - stop: "Lux OFF"
+
+            # ── Handle: OCCUPANCY SENSOR OFF → CHECK ALL CLEAR → OFF-DELAY ──
+            - conditions:
+                - condition: template
+                  value_template: "{{ wait.trigger is not none and wait.trigger.id == 'occ_off' }}"
+              sequence:
+                - variables:
+                    any_motion_on: "{{ expand(motion_list)|selectattr('state','eq','on')|list|count > 0 }}"
+                    any_contact_open: "{{ expand(contacts_list)|selectattr('state','in',['on','open'])|list|count > 0 }}"
+                    any_keepalive_on: "{{ expand(keepalive_list)|selectattr('state','in',['on','open'])|list|count > 0 }}"
+                - if:
+                    - condition: template
+                      value_template: "{{ not any_motion_on and not any_contact_open and not any_keepalive_on }}"
+                  then:
+                    - choose:
+                        - conditions: "{{ debug }}"
+                          sequence:
+                            - service: logbook.log
+                              data:
+                                name: "MotionMode v7"
+                                message: "All occupancy clear. Off-delay {{ off_delay }}s starting."
+                                entity_id: "{{ this.entity_id }}"
+                    # OFF-DELAY: wait for new motion or timeout
+                    - wait_for_trigger:
+                        - platform: state
+                          id: "motion_on"
+                          entity_id: !input motion_or_presence_sensors
+                          to: "on"
+                        - platform: state
+                          id: "contact_open"
+                          entity_id: !input contact_sensors
+                          to: "on"
+                        - platform: state
+                          id: "contact_open"
+                          entity_id: !input contact_sensors
+                          to: "open"
+                        - platform: state
+                          id: "keepalive_on"
+                          entity_id: !input keepalive_sensors
+                          to: "on"
+                        - platform: state
+                          id: "keepalive_on"
+                          entity_id: !input keepalive_sensors
+                          to: "open"
+                        - platform: state
+                          id: "manual_off"
+                          entity_id: !input lockout_watch_lights
+                          to: "off"
+                        - platform: state
+                          id: "mode_change"
+                          entity_id: !input mode_helper
+                      timeout:
+                        seconds: "{{ off_delay | int }}"
+                      continue_on_timeout: true
+                    - choose:
+                        # New motion during off-delay → continue main loop
+                        - conditions: "{{ wait.trigger is not none and wait.trigger.id in ['motion_on', 'contact_open', 'keepalive_on'] }}"
+                          sequence: []
+                        # Manual off during off-delay → lockout
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ wait.trigger is not none and wait.trigger.id == 'manual_off' }}"
+                            - condition: template
+                              value_template: >
+                                {% set uid = wait.trigger.to_state.context.user_id %}
+                                {% if lockout_mode == 'Digital only' %}{{ uid is not none }}
+                                {% elif lockout_mode == 'Physical only' %}{{ uid is none }}
+                                {% else %}true{% endif %}
+                          sequence:
+                            - delay:
+                                minutes: "{{ lockout_timeout_min | int }}"
+                            - stop: "Lockout (manual off during off-delay)"
+                        # Mode change during off-delay → re-apply (continue loop)
+                        - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
+                          sequence: []
+                      default:
+                        # ── OFF-DELAY EXPIRED: turn off lights ──
+                        - variables:
+                            mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+                        - if:
+                            - condition: template
+                              value_template: "{{ not disable_off_now }}"
+                          then:
+                            - choose:
+                                - conditions: "{{ mode_now == mode_day }}"
+                                  sequence:
+                                    - choose:
+                                        - conditions: "{{ entities_day | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input entities_day
+                                    - choose:
+                                        - conditions: "{{ aux_on_day_entities | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input aux_on_day_entities
+                                    - choose:
+                                        - conditions: "{{ aux_off_day_entities | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input aux_off_day_entities
+                                - conditions: "{{ mode_now == mode_eve }}"
+                                  sequence:
+                                    - choose:
+                                        - conditions: "{{ entities_eve | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input entities_evening
+                                    - choose:
+                                        - conditions: "{{ aux_on_eve_entities | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input aux_on_evening_entities
+                                    - choose:
+                                        - conditions: "{{ aux_off_eve_entities | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input aux_off_evening_entities
+                                - conditions: "{{ mode_now == mode_ngt }}"
+                                  sequence:
+                                    - choose:
+                                        - conditions: "{{ entities_ngt | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input entities_night
+                                    - choose:
+                                        - conditions: "{{ aux_on_ngt_entities | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input aux_on_night_entities
+                                    - choose:
+                                        - conditions: "{{ aux_off_ngt_entities | length > 0 }}"
+                                          sequence:
+                                            - service: homeassistant.turn_off
+                                              target:
+                                                entity_id: !input aux_off_night_entities
+
+                        # ── POST-OFF WATCH: detect manual ON → lockout ──
+                        - wait_for_trigger:
+                            - platform: state
+                              id: "manual_on"
+                              entity_id: !input lockout_watch_lights
+                              to: "on"
+                            - platform: state
+                              id: "motion_on"
+                              entity_id: !input motion_or_presence_sensors
+                              to: "on"
+                            - platform: state
+                              id: "contact_open"
+                              entity_id: !input contact_sensors
+                              to: "on"
+                            - platform: state
+                              id: "contact_open"
+                              entity_id: !input contact_sensors
+                              to: "open"
+                            - platform: state
+                              id: "level_change"
+                              entity_id: !input override_capture_lights
+                              attribute: brightness
+                            - platform: state
+                              id: "level_change"
+                              entity_id: !input override_capture_lights
+                              attribute: color_temp
+                            - platform: state
+                              id: "level_change"
+                              entity_id: !input override_capture_lights
+                              attribute: rgb_color
+                            - platform: state
+                              id: "level_change"
+                              entity_id: !input override_capture_lights
+                              attribute: hs_color
+                          timeout:
+                            minutes: "{{ lockout_timeout_min | int }}"
+                          continue_on_timeout: true
+                        - choose:
+                            # Manual ON after auto-OFF → lockout with override capture
+                            - conditions:
+                                - condition: template
+                                  value_template: "{{ wait.trigger is not none and wait.trigger.id == 'manual_on' }}"
+                                - condition: template
+                                  value_template: >
+                                    {% set uid = wait.trigger.to_state.context.user_id %}
+                                    {% if lockout_mode == 'Digital only' %}{{ uid is not none }}
+                                    {% elif lockout_mode == 'Physical only' %}{{ uid is none }}
+                                    {% else %}true{% endif %}
+                              sequence:
+                                - choose:
+                                    - conditions: "{{ debug }}"
+                                      sequence:
+                                        - service: logbook.log
+                                          data:
+                                            name: "MotionMode v7"
+                                            message: "LOCKOUT: manual ON after auto-OFF. Hands off {{ lockout_timeout_min }} min."
+                                            entity_id: "{{ this.entity_id }}"
+                                # Lockout sub-loop (same pattern as manual_off lockout)
+                                - variables:
+                                    lockout_start: "{{ as_timestamp(now()) }}"
+                                    lockout_secs: "{{ lockout_timeout_min | int * 60 }}"
+                                - repeat:
+                                    while:
+                                      - condition: template
+                                        value_template: "{{ (as_timestamp(now()) - lockout_start) < lockout_secs | float }}"
+                                    sequence:
+                                      - variables:
+                                          remaining: "{{ [1, lockout_secs | float - (as_timestamp(now()) - lockout_start)] | max | int }}"
+                                      - wait_for_trigger:
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: brightness
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: color_temp
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: rgb_color
+                                          - platform: state
+                                            id: "level_change"
+                                            entity_id: !input override_capture_lights
+                                            attribute: hs_color
+                                          - platform: state
+                                            id: "mode_change"
+                                            entity_id: !input mode_helper
+                                        timeout:
+                                          seconds: "{{ remaining }}"
+                                        continue_on_timeout: true
+                                      - choose:
+                                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
+                                            sequence:
+                                              - choose:
+                                                  - conditions: >
+                                                      {% set uid = wait.trigger.to_state.context.user_id %}
+                                                      {% if override_change_source == 'Digital only' %}{{ uid is not none }}
+                                                      {% elif override_change_source == 'Physical only' %}{{ uid is none }}
+                                                      {% else %}true{% endif %}
+                                                    sequence:
+                                                      - variables:
+                                                          override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                                                      - service: scene.create
+                                                        data:
+                                                          scene_id: "{{ override_scene_id }}"
+                                                          snapshot_entities: !input override_capture_lights
+                                          - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
+                                            sequence:
+                                              - stop: "Lockout ended by mode change"
+                                - stop: "Post-OFF lockout timeout expired"
+                            # Level change during post-off → capture + lockout
+                            - conditions:
+                                - condition: template
+                                  value_template: "{{ wait.trigger is not none and wait.trigger.id == 'level_change' }}"
+                              sequence:
+                                - variables:
+                                    override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                                - service: scene.create
+                                  data:
+                                    scene_id: "{{ override_scene_id }}"
+                                    snapshot_entities: !input override_capture_lights
+                                - delay:
+                                    minutes: "{{ lockout_timeout_min | int }}"
+                                - stop: "Post-OFF override captured, lockout expired"
+                            # New motion during post-off → re-activate (continue outer loop)
+                            - conditions: "{{ wait.trigger is not none and wait.trigger.id in ['motion_on', 'contact_open'] }}"
+                              sequence:
+                                # Re-apply lighting for current mode
+                                - variables:
+                                    mode_now: "{{ states(mode_entity) if mode_entity else 'Day' }}"
+                                    override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
+                                - choose:
+                                    - conditions: "{{ states('scene.' ~ override_scene_id) not in ['unknown','unavailable'] }}"
+                                      sequence:
+                                        - service: scene.turn_on
+                                          target:
+                                            entity_id: "scene.{{ override_scene_id }}"
+                                  default:
+                                    - choose:
+                                        - conditions: "{{ mode_now == mode_day and entities_day | length > 0 }}"
+                                          sequence:
+                                            - service: light.turn_on
+                                              target:
+                                                entity_id: !input entities_day
+                                              data:
+                                                brightness_pct: "{{ day_bri|int }}"
+                                        - conditions: "{{ mode_now == mode_eve and entities_eve | length > 0 }}"
+                                          sequence:
+                                            - service: light.turn_on
+                                              target:
+                                                entity_id: !input entities_evening
+                                              data:
+                                                brightness_pct: "{{ eve_bri|int }}"
+                                        - conditions: "{{ mode_now == mode_ngt and entities_ngt | length > 0 }}"
+                                          sequence:
+                                            - service: light.turn_on
+                                              target:
+                                                entity_id: !input entities_night
+                                              data:
+                                                brightness_pct: "{{ ngt_bri|int }}"
+                          default:
+                            # Post-off watch timeout (no manual action) → done
+                            - stop: "Post-off watch expired, automation complete"
+
+      until:
+        - condition: template
+          value_template: "false"
