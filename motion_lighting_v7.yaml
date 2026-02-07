@@ -344,9 +344,9 @@ blueprint:
               min: 1
               max: 120
               step: 1
-        post_off_watch_minutes:
-          name: "Post-off watch window (minutes)"
-          description: "After auto-OFF, how long to watch for manual ON or level changes before the automation fully exits. Range 1–30."
+        watch_window_minutes:
+          name: "Watch window (minutes)"
+          description: "After any automation state change (ON, OFF, or level), how long to watch for manual intervention before ignoring it. Range 1–30."
           default: 5
           selector:
             number:
@@ -522,7 +522,7 @@ variables:
   lockout_watch: !input lockout_watch_lights
   lockout_mode: !input manual_lockout_mode
   lockout_timeout_min: !input lockout_timeout
-  post_off_watch_min: !input post_off_watch_minutes
+  watch_window_min: !input watch_window_minutes
   override_capture_lights_list: !input override_capture_lights
   override_change_source: !input override_change_source
   override_scene_base: "{{ (this.entity_id | replace('.','_')) ~ '_override' }}"
@@ -788,6 +788,11 @@ action:
                         target:
                           entity_id: !input aux_on_night_entities
 
+  # Track when automation last changed light state (for watch window)
+  - variables:
+      last_action_time: "{{ as_timestamp(now()) }}"
+      watch_window_secs: "{{ watch_window_min | int * 60 }}"
+
   # ══════════════════════════════════════
   # 6. MAIN EVENT LOOP
   # ══════════════════════════════════════
@@ -865,6 +870,20 @@ action:
                     {% elif lockout_mode == 'Physical only' %}{{ uid is none }}
                     {% else %}true{% endif %}
               sequence:
+                # Watch window gate: only lockout if within watch window
+                - if:
+                    - condition: template
+                      value_template: "{{ (as_timestamp(now()) - last_action_time | float) >= watch_window_secs | float }}"
+                  then:
+                    - choose:
+                        - conditions: "{{ debug }}"
+                          sequence:
+                            - service: logbook.log
+                              data:
+                                name: "MotionMode v7"
+                                message: "Manual OFF outside watch window ({{ watch_window_min }}m). No lockout."
+                                entity_id: "{{ this.entity_id }}"
+                    - stop: "Manual off outside watch window, no lockout"
                 - choose:
                     - conditions: "{{ debug }}"
                       sequence:
@@ -951,7 +970,7 @@ action:
                                         entity_id: !input lockout_watch_lights
                                         to: "on"
                                     timeout:
-                                      hours: 24
+                                      minutes: "{{ lockout_timeout_min | int }}"
                                     continue_on_timeout: true
                               - stop: "Lockout ended by mode change (override cleared)"
                 # After lockout timeout: check dont_turn_on_manual_off
@@ -967,8 +986,16 @@ action:
                                 name: "MotionMode v7"
                                 message: "BLOCK: Lockout expired but won't respond to motion until manual ON{{ ' or mode change' if clear_block_on_mode else '' }}."
                                 entity_id: "{{ this.entity_id }}"
+                    - variables:
+                        block_start: "{{ as_timestamp(now()) }}"
+                        block_secs: "{{ lockout_timeout_min | int * 60 }}"
                     - repeat:
+                        while:
+                          - condition: template
+                            value_template: "{{ (as_timestamp(now()) - block_start) < block_secs | float }}"
                         sequence:
+                          - variables:
+                              remaining: "{{ [1, block_secs | float - (as_timestamp(now()) - block_start)] | max | int }}"
                           - wait_for_trigger:
                               - platform: state
                                 id: "manual_on"
@@ -978,7 +1005,7 @@ action:
                                 id: "mode_change_unblock"
                                 entity_id: !input mode_helper
                             timeout:
-                              hours: 24
+                              seconds: "{{ remaining }}"
                             continue_on_timeout: true
                           - choose:
                               - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'manual_on' }}"
@@ -987,12 +1014,9 @@ action:
                               - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change_unblock' and clear_block_on_mode }}"
                                 sequence:
                                   - stop: "Block cleared by mode change"
-                        until:
-                          - condition: template
-                            value_template: "false"
-                - stop: "Lockout timeout expired"
+                - stop: "Dont-turn-on block timeout expired"
 
-            # ── Handle: LEVEL CHANGE (during active) → CAPTURE ──
+            # ── Handle: LEVEL CHANGE (during active) → CAPTURE (within watch window only) ──
             - conditions:
                 - condition: template
                   value_template: >
@@ -1004,6 +1028,8 @@ action:
                     {% if override_change_source == 'Digital only' %}{{ uid is not none }}
                     {% elif override_change_source == 'Physical only' %}{{ uid is none }}
                     {% else %}true{% endif %}
+                - condition: template
+                  value_template: "{{ (as_timestamp(now()) - last_action_time | float) < watch_window_secs | float }}"
               sequence:
                 - variables:
                     override_scene_id: "{{ override_scene_base ~ '_' ~ (states(mode_entity) | default('Day') | replace(' ','_') | lower) }}"
@@ -1128,6 +1154,9 @@ action:
                                         entity_id: !input entities_night
                                       data:
                                         brightness_pct: "{{ ngt_bri|int }}"
+                # Reset watch window after re-apply
+                - variables:
+                    last_action_time: "{{ as_timestamp(now()) }}"
 
             # ── Handle: LUX OFF → TURN OFF, END ──
             - conditions:
@@ -1336,7 +1365,7 @@ action:
                                                     entity_id: !input lockout_watch_lights
                                                     to: "on"
                                                 timeout:
-                                                  hours: 24
+                                                  minutes: "{{ lockout_timeout_min | int }}"
                                                 continue_on_timeout: true
                                           - stop: "Lockout ended by mode change (off-delay manual off)"
                             # After lockout timeout: check dont_turn_on_manual_off
@@ -1352,8 +1381,16 @@ action:
                                             name: "MotionMode v7"
                                             message: "BLOCK: Lockout expired but won't respond to motion until manual ON{{ ' or mode change' if clear_block_on_mode else '' }}."
                                             entity_id: "{{ this.entity_id }}"
+                                - variables:
+                                    block_start: "{{ as_timestamp(now()) }}"
+                                    block_secs: "{{ lockout_timeout_min | int * 60 }}"
                                 - repeat:
+                                    while:
+                                      - condition: template
+                                        value_template: "{{ (as_timestamp(now()) - block_start) < block_secs | float }}"
                                     sequence:
+                                      - variables:
+                                          remaining: "{{ [1, block_secs | float - (as_timestamp(now()) - block_start)] | max | int }}"
                                       - wait_for_trigger:
                                           - platform: state
                                             id: "manual_on"
@@ -1363,7 +1400,7 @@ action:
                                             id: "mode_change_unblock"
                                             entity_id: !input mode_helper
                                         timeout:
-                                          hours: 24
+                                          seconds: "{{ remaining }}"
                                         continue_on_timeout: true
                                       - choose:
                                           - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'manual_on' }}"
@@ -1372,10 +1409,7 @@ action:
                                           - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change_unblock' and clear_block_on_mode }}"
                                             sequence:
                                               - stop: "Block cleared by mode change"
-                                    until:
-                                      - condition: template
-                                        value_template: "false"
-                            - stop: "Lockout timeout expired (off-delay manual off)"
+                            - stop: "Dont-turn-on block timeout expired (off-delay)"
                         # Mode change during off-delay → re-apply (continue loop)
                         - conditions: "{{ wait.trigger is not none and wait.trigger.id == 'mode_change' }}"
                           sequence: []
@@ -1498,7 +1532,7 @@ action:
                               entity_id: !input override_capture_lights
                               attribute: hs_color
                           timeout:
-                            minutes: "{{ post_off_watch_min | int }}"
+                            minutes: "{{ watch_window_min | int }}"
                           continue_on_timeout: true
                         - choose:
                             # Manual ON after auto-OFF → lockout with override capture
