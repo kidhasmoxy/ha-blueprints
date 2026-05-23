@@ -18,13 +18,14 @@ anchors:
 
 title: LettuceGrow Nook
 views:
-  - title: LettuceGrow
-    path: lettucegrow
+  # ===== TAB 1: CONTROL =====
+  - title: Control
+    path: control
     icon: mdi:sprout
     type: sections
     sections:
-      # ===== STATUS =====
-      - title: System Status
+      # --- Status ---
+      - title: Status
         type: grid
         cards:
           - type: entities
@@ -39,10 +40,6 @@ views:
                 name: Water Pump
               - entity: timer.lettucegrow_override
                 name: Override Timer
-              - entity: input_datetime.lettucegrow_day_start
-                name: Day Starts At
-              - entity: input_datetime.lettucegrow_day_end
-                name: Night Starts At
 
           - type: entity
             entity: *light_power
@@ -56,18 +53,6 @@ views:
             icon: mdi:flash
             unit: W
 
-          - type: entity
-            entity: *light_energy
-            name: Light Energy (Total)
-            icon: mdi:lightning-bolt
-            unit: kWh
-
-          - type: entity
-            entity: *pump_energy
-            name: Pump Energy (Total)
-            icon: mdi:lightning-bolt
-            unit: kWh
-
           - type: history-graph
             title: Activity (24h)
             hours_to_show: 24
@@ -77,24 +62,7 @@ views:
               - entity: *pump_switch
                 name: Pump
 
-      # ===== ENERGY =====
-      - title: Energy
-        type: grid
-        cards:
-          - type: energy-date-selection
-
-          - type: statistics-graph
-            title: Energy Consumption
-            period: day
-            stat_types:
-              - sum
-            entities:
-              - entity: *light_energy
-                name: Light
-              - entity: *pump_energy
-                name: Pump
-
-      # ===== ACTIONS =====
+      # --- Actions ---
       - title: Actions
         type: grid
         cards:
@@ -181,8 +149,14 @@ views:
                 action: perform-action
                 perform_action: script.lettucegrow_cancel_override
 
-      # ===== SCHEDULE ADJUSTMENT =====
-      - title: Adjust Day/Night Cycle
+  # ===== TAB 2: SETTINGS =====
+  - title: Settings
+    path: settings
+    icon: mdi:cog
+    type: sections
+    sections:
+      # --- Schedule ---
+      - title: Day/Night Schedule
         type: grid
         cards:
           - type: markdown
@@ -200,3 +174,32 @@ views:
                 name: Night cycle starts at
               - entity: input_number.lettucegrow_pump_duration
                 name: Pump run time per cycle (min)
+
+      # --- Energy ---
+      - title: Energy
+        type: grid
+        cards:
+          - type: entity
+            entity: *light_energy
+            name: Light Energy (Total)
+            icon: mdi:lightning-bolt
+            unit: kWh
+
+          - type: entity
+            entity: *pump_energy
+            name: Pump Energy (Total)
+            icon: mdi:lightning-bolt
+            unit: kWh
+
+          - type: energy-date-selection
+
+          - type: statistics-graph
+            title: Energy Consumption
+            period: day
+            stat_types:
+              - sum
+            entities:
+              - entity: *light_energy
+                name: Light
+              - entity: *pump_energy
+                name: Pump
