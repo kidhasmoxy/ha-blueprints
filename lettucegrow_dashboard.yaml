@@ -4,14 +4,17 @@
 # To use this dashboard, go to Settings > Dashboards > Add Dashboard
 # Choose "Manual" and paste this YAML into the Raw Configuration Editor.
 #
-# Adjust entity IDs to match your setup:
-#   - switch.hydroponic_plug_switch       (grow light)
-#   - switch.hydroponic_plug_switch_2     (water pump)
-#   - sensor.hydroponic_plug_power        (light power)
-#   - sensor.hydroponic_plug_power_2      (pump power)
-#   - sensor.hydroponic_plug_summation_delivered    (light energy kWh)
-#   - sensor.hydroponic_plug_summation_delivered_2  (pump energy kWh)
+# *** CONFIGURE HERE: Change these anchors to match your entity IDs ***
 # ============================================================
+
+# Define all entity IDs once here — change only this section
+anchors:
+  light_switch: &light_switch switch.hydroponic_plug_switch
+  pump_switch: &pump_switch switch.hydroponic_plug_switch_2
+  light_power: &light_power sensor.hydroponic_plug_power
+  pump_power: &pump_power sensor.hydroponic_plug_power_2
+  light_energy: &light_energy sensor.hydroponic_plug_summation_delivered
+  pump_energy: &pump_energy sensor.hydroponic_plug_summation_delivered_2
 
 title: LettuceGrow Nook
 views:
@@ -30,9 +33,9 @@ views:
             entities:
               - entity: input_select.lettucegrow_mode
                 name: Operating Mode
-              - entity: switch.hydroponic_plug_switch
+              - entity: *light_switch
                 name: Grow Light
-              - entity: switch.hydroponic_plug_switch_2
+              - entity: *pump_switch
                 name: Water Pump
               - entity: timer.lettucegrow_override
                 name: Override Timer
@@ -42,25 +45,25 @@ views:
                 name: Night Starts At
 
           - type: entity
-            entity: sensor.hydroponic_plug_power
+            entity: *light_power
             name: Light Power
             icon: mdi:flash
             unit: W
 
           - type: entity
-            entity: sensor.hydroponic_plug_power_2
+            entity: *pump_power
             name: Pump Power
             icon: mdi:flash
             unit: W
 
           - type: entity
-            entity: sensor.hydroponic_plug_summation_delivered
+            entity: *light_energy
             name: Light Energy (Total)
             icon: mdi:lightning-bolt
             unit: kWh
 
           - type: entity
-            entity: sensor.hydroponic_plug_summation_delivered_2
+            entity: *pump_energy
             name: Pump Energy (Total)
             icon: mdi:lightning-bolt
             unit: kWh
@@ -69,9 +72,9 @@ views:
             title: Activity (24h)
             hours_to_show: 24
             entities:
-              - entity: switch.hydroponic_plug_switch
+              - entity: *light_switch
                 name: Light
-              - entity: switch.hydroponic_plug_switch_2
+              - entity: *pump_switch
                 name: Pump
 
       # ===== ENERGY =====
@@ -86,9 +89,9 @@ views:
             stat_types:
               - sum
             entities:
-              - entity: sensor.hydroponic_plug_summation_delivered
+              - entity: *light_energy
                 name: Light
-              - entity: sensor.hydroponic_plug_summation_delivered_2
+              - entity: *pump_energy
                 name: Pump
 
       # ===== ACTIONS =====
