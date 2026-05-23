@@ -1,0 +1,233 @@
+# ============================================================
+# LettuceGrow Nook – Companion Package
+# ============================================================
+# Drop this file into your Home Assistant packages/ folder.
+# In configuration.yaml, ensure you have:
+#   homeassistant:
+#     packages: !include_dir_named packages/
+#
+# This package provides:
+#   • input_select for override mode (normal/snooze/cleaning/spraying)
+#   • input_datetime for adjustable day/night schedule
+#   • input_number for test pump duration and snooze duration
+#   • timer helpers for tracking override countdowns
+#   • Scripts: test_pump, snooze, cleaning_cycle, spraying_cycle, cancel_override
+#   • Automations: auto-expire overrides when timers finish
+#
+# *** CUSTOMIZE: Change the two anchor values below to your actual entity IDs ***
+# ============================================================
+
+homeassistant:
+  customize:
+    package.node_anchors:
+      # Change these to match your actual switch entity IDs
+      light_switch: &light_switch switch.lettucegrow_light
+      pump_switch: &pump_switch switch.lettucegrow_pump
+
+# ============================================================
+# INPUT HELPERS
+# ============================================================
+input_select:
+  lettucegrow_mode:
+    name: "LettuceGrow Mode"
+    icon: mdi:sprout
+    options:
+      - normal
+      - snooze
+      - cleaning
+      - spraying
+
+input_datetime:
+  lettucegrow_day_start:
+    name: "LettuceGrow Day Start"
+    icon: mdi:weather-sunny
+    has_date: false
+    has_time: true
+    initial: "06:00:00"
+
+  lettucegrow_day_end:
+    name: "LettuceGrow Day End"
+    icon: mdi:weather-night
+    has_date: false
+    has_time: true
+    initial: "22:00:00"
+
+input_number:
+  lettucegrow_test_pump_minutes:
+    name: "Test Pump Duration"
+    icon: mdi:pump
+    min: 1
+    max: 15
+    step: 1
+    unit_of_measurement: min
+    mode: slider
+
+  lettucegrow_snooze_minutes:
+    name: "Snooze Duration"
+    icon: mdi:sleep
+    min: 1
+    max: 180
+    step: 5
+    unit_of_measurement: min
+    mode: slider
+
+timer:
+  lettucegrow_override:
+    name: "LettuceGrow Override Timer"
+    icon: mdi:timer-sand
+
+# ============================================================
+# SCRIPTS
+# ============================================================
+script:
+  lettucegrow_test_pump:
+    alias: "LettuceGrow – Test Pump"
+    icon: mdi:pump
+    description: "Run the pump for a set number of minutes without affecting automation."
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: snooze
+      - action: switch.turn_on
+        target:
+          entity_id: *pump_switch
+      - action: timer.start
+        target:
+          entity_id: timer.lettucegrow_override
+        data:
+          duration: "{{ states('input_number.lettucegrow_test_pump_minutes') | int * 60 }}"
+      - delay:
+          minutes: "{{ states('input_number.lettucegrow_test_pump_minutes') | int }}"
+      - action: switch.turn_off
+        target:
+          entity_id: *pump_switch
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: normal
+    mode: single
+
+  lettucegrow_snooze:
+    alias: "LettuceGrow – Snooze"
+    icon: mdi:sleep
+    description: "Pause automation, turn off pump and lights for a set duration."
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: snooze
+      - action: switch.turn_off
+        target:
+          entity_id: *pump_switch
+      - action: switch.turn_off
+        target:
+          entity_id: *light_switch
+      - action: timer.start
+        target:
+          entity_id: timer.lettucegrow_override
+        data:
+          duration: "{{ states('input_number.lettucegrow_snooze_minutes') | int * 60 }}"
+    mode: single
+
+  lettucegrow_cleaning_cycle:
+    alias: "LettuceGrow – Cleaning Cycle"
+    icon: mdi:water-sync
+    description: "Run pump continuously for 2 hours (after adding water). Automation is paused."
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: cleaning
+      - action: switch.turn_on
+        target:
+          entity_id: *pump_switch
+      - action: timer.start
+        target:
+          entity_id: timer.lettucegrow_override
+        data:
+          duration: "7200"
+      - delay:
+          hours: 2
+      - action: switch.turn_off
+        target:
+          entity_id: *pump_switch
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: normal
+    mode: single
+
+  lettucegrow_spraying_cycle:
+    alias: "LettuceGrow – Spraying Cycle"
+    icon: mdi:spray
+    description: "Keep lights OFF for 6 hours after pest spraying. Automation is paused."
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: spraying
+      - action: switch.turn_off
+        target:
+          entity_id: *light_switch
+      - action: timer.start
+        target:
+          entity_id: timer.lettucegrow_override
+        data:
+          duration: "21600"
+      - delay:
+          hours: 6
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: normal
+    mode: single
+
+  lettucegrow_cancel_override:
+    alias: "LettuceGrow – Cancel Override"
+    icon: mdi:close-circle
+    description: "Cancel any active override and return to normal operation."
+    sequence:
+      - action: timer.cancel
+        target:
+          entity_id: timer.lettucegrow_override
+      - action: switch.turn_off
+        target:
+          entity_id: *pump_switch
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: normal
+    mode: single
+
+# ============================================================
+# AUTOMATION: Expire override when timer finishes
+# (backup in case script delay doesn't fire after restart)
+# ============================================================
+automation:
+  - id: lettucegrow_override_expiry
+    alias: "LettuceGrow – Override Expiry"
+    description: "Return to normal mode when override timer finishes (resilience backup)."
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.lettucegrow_override
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: *pump_switch
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.lettucegrow_mode
+        data:
+          option: normal
+    mode: single

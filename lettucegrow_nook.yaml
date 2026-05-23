@@ -4,8 +4,11 @@ blueprint:
     Manages a LettuceGrow Nook hydroponic system with automatic day/night cycles.
     • Day cycle: light ON continuously, pump runs 10 min every hour.
     • Night cycle: light OFF, pump runs 10 min every 3 hours.
+    • Supports override modes via input_select helper: normal, snooze, cleaning, spraying.
+    • Schedule is adjustable at runtime via input_datetime helpers.
     • Resilient: re-evaluates state on HA start, automation reload, and every 5 minutes
       to self-correct after restarts or missed events.
+    • Use companion package (lettucegrow_package.yaml) for helpers, scripts, and dashboard.
   domain: automation
   homeassistant:
     min_version: "2025.1.0"
@@ -16,18 +19,26 @@ blueprint:
       icon: mdi:clock-outline
       collapsed: false
       input:
-        day_start:
-          name: "Day cycle start time"
-          description: "Time when the day cycle begins (light ON, pump every hour)."
-          default: "06:00:00"
+        day_start_helper:
+          name: "Day cycle start time helper"
+          description: >
+            An input_datetime (time-only) entity for when the day cycle begins.
+            Adjustable from the dashboard at any time.
+          default: input_datetime.lettucegrow_day_start
           selector:
-            time:
-        day_end:
-          name: "Day cycle end time"
-          description: "Time when the night cycle begins (light OFF, pump every 3 hours)."
-          default: "22:00:00"
+            entity:
+              filter:
+                - domain: input_datetime
+        day_end_helper:
+          name: "Day cycle end time helper"
+          description: >
+            An input_datetime (time-only) entity for when the night cycle begins.
+            Adjustable from the dashboard at any time.
+          default: input_datetime.lettucegrow_day_end
           selector:
-            time:
+            entity:
+              filter:
+                - domain: input_datetime
 
     devices:
       name: "Devices"
@@ -48,6 +59,23 @@ blueprint:
             entity:
               filter:
                 - domain: switch
+
+    overrides:
+      name: "Override Control"
+      icon: mdi:hand-back-right
+      collapsed: true
+      input:
+        override_mode:
+          name: "Override mode helper"
+          description: >
+            An input_select entity with options: normal, snooze, cleaning, spraying.
+            The automation will skip its normal logic when not in 'normal' mode.
+            Use the companion package to create this automatically.
+          default: input_select.lettucegrow_mode
+          selector:
+            entity:
+              filter:
+                - domain: input_select
 
     timing:
       name: "Pump Timing"
@@ -83,11 +111,14 @@ blueprint:
               unit_of_measurement: minutes
 
 variables:
-  day_start: !input day_start
-  day_end: !input day_end
+  day_start_entity: !input day_start_helper
+  day_end_entity: !input day_end_helper
+  day_start: "{{ states(day_start_entity) }}"
+  day_end: "{{ states(day_end_entity) }}"
   pump_duration: !input pump_duration
   day_pump_interval: !input day_pump_interval
   night_pump_interval: !input night_pump_interval
+  override_mode: !input override_mode
   is_day: >
     {% set now_time = now().strftime('%H:%M:%S') %}
     {% if day_start < day_end %}
@@ -95,17 +126,15 @@ variables:
     {% else %}
       {{ now_time >= day_start or now_time < day_end }}
     {% endif %}
-  current_interval: >
-    {{ day_pump_interval if is_day else night_pump_interval }}
 
 triggers:
-  # Day cycle start
+  # Day cycle start (dynamic from helper)
   - trigger: time
-    at: !input day_start
+    at: !input day_start_helper
     id: day_start
-  # Night cycle start
+  # Night cycle start (dynamic from helper)
   - trigger: time
-    at: !input day_end
+    at: !input day_end_helper
     id: night_start
   # Resilience: re-evaluate on HA start
   - trigger: homeassistant
@@ -119,6 +148,23 @@ triggers:
   - trigger: time_pattern
     minutes: "/5"
     id: periodic_check
+  # React when override mode returns to normal
+  - trigger: state
+    entity_id: !input override_mode
+    to: "normal"
+    id: override_cleared
+  # React when schedule is changed from dashboard
+  - trigger: state
+    entity_id: !input day_start_helper
+    id: schedule_changed
+  - trigger: state
+    entity_id: !input day_end_helper
+    id: schedule_changed
+
+conditions:
+  # Only run normal cycle logic when mode is 'normal'
+  - condition: template
+    value_template: "{{ states(override_mode) == 'normal' }}"
 
 actions:
   - choose:

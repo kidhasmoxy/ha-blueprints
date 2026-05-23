@@ -1,0 +1,177 @@
+# ============================================================
+# LettuceGrow Nook – Dashboard
+# ============================================================
+# To use this dashboard, go to Settings > Dashboards > Add Dashboard
+# Choose "Manual" and paste this YAML into the Raw Configuration Editor.
+#
+# Adjust entity IDs to match your setup:
+#   - switch.lettucegrow_light   (your grow light switch)
+#   - switch.lettucegrow_pump    (your water pump switch)
+#   - sensor.lettucegrow_power   (real-time power sensor, if available)
+#   - sensor.lettucegrow_energy  (cumulative energy sensor, if available)
+# ============================================================
+
+title: LettuceGrow Nook
+views:
+  - title: LettuceGrow
+    path: lettucegrow
+    icon: mdi:sprout
+    type: sections
+    sections:
+      # ===== STATUS =====
+      - title: System Status
+        type: grid
+        cards:
+          - type: entities
+            title: Current State
+            show_header_toggle: false
+            entities:
+              - entity: input_select.lettucegrow_mode
+                name: Operating Mode
+              - entity: switch.lettucegrow_light
+                name: Grow Light
+              - entity: switch.lettucegrow_pump
+                name: Water Pump
+              - entity: timer.lettucegrow_override
+                name: Override Timer
+              - entity: input_datetime.lettucegrow_day_start
+                name: Day Starts At
+              - entity: input_datetime.lettucegrow_day_end
+                name: Night Starts At
+
+          - type: entity
+            entity: sensor.lettucegrow_power
+            name: Current Power Usage
+            icon: mdi:flash
+            unit: W
+
+          - type: entity
+            entity: sensor.lettucegrow_energy
+            name: Total Energy Used
+            icon: mdi:lightning-bolt
+            unit: kWh
+
+          - type: history-graph
+            title: Activity (24h)
+            hours_to_show: 24
+            entities:
+              - entity: switch.lettucegrow_light
+                name: Light
+              - entity: switch.lettucegrow_pump
+                name: Pump
+
+      # ===== ENERGY =====
+      - title: Energy
+        type: grid
+        cards:
+          - type: energy-date-selection
+
+          - type: statistics-graph
+            title: Energy Consumption
+            period: day
+            stat_types:
+              - sum
+            entities:
+              - entity: sensor.lettucegrow_energy
+                name: LettuceGrow
+
+      # ===== ACTIONS =====
+      - title: Actions
+        type: grid
+        cards:
+          # --- Test Pump ---
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: "### Test Pump"
+              - type: entities
+                entities:
+                  - entity: input_number.lettucegrow_test_pump_minutes
+                    name: Duration (minutes)
+              - type: button
+                name: Run Test Pump
+                icon: mdi:pump
+                tap_action:
+                  action: perform-action
+                  perform_action: script.lettucegrow_test_pump
+
+          # --- Snooze ---
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: "### Snooze System"
+              - type: entities
+                entities:
+                  - entity: input_number.lettucegrow_snooze_minutes
+                    name: Duration (minutes)
+              - type: button
+                name: Snooze
+                icon: mdi:sleep
+                tap_action:
+                  action: perform-action
+                  perform_action: script.lettucegrow_snooze
+
+          # --- Cleaning Cycle ---
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: "### Cleaning Cycle"
+              - type: markdown
+                content: >
+                  Runs the pump continuously for **2 hours** after adding water.
+                  Automation is paused during this time.
+              - type: button
+                name: Start Cleaning Cycle
+                icon: mdi:water-sync
+                tap_action:
+                  action: perform-action
+                  perform_action: script.lettucegrow_cleaning_cycle
+
+          # --- Spraying Cycle ---
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: "### Spraying Cycle"
+              - type: markdown
+                content: >
+                  Keeps lights **OFF for 6 hours** after pest spraying.
+                  Automation is paused during this time.
+              - type: button
+                name: Start Spraying Cycle
+                icon: mdi:spray
+                tap_action:
+                  action: perform-action
+                  perform_action: script.lettucegrow_spraying_cycle
+
+          # --- Cancel Override ---
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: input_select.lettucegrow_mode
+                state_not: normal
+            card:
+              type: button
+              name: Cancel Override & Resume Normal
+              icon: mdi:close-circle
+              icon_height: 40px
+              tap_action:
+                action: perform-action
+                perform_action: script.lettucegrow_cancel_override
+
+      # ===== SCHEDULE ADJUSTMENT =====
+      - title: Adjust Day/Night Cycle
+        type: grid
+        cards:
+          - type: markdown
+            content: >
+              Adjust the day/night schedule below. Changes take effect
+              immediately — the automation will re-evaluate within 5 minutes
+              or on the next trigger.
+
+          - type: entities
+            title: Schedule
+            entities:
+              - entity: input_datetime.lettucegrow_day_start
+                name: Day cycle starts at
+              - entity: input_datetime.lettucegrow_day_end
+                name: Night cycle starts at
