@@ -6,8 +6,8 @@ blueprint:
     • Night cycle: light OFF, pump runs 10 min every 3 hours.
     • Supports override modes via input_select helper: normal, snooze, cleaning, spraying.
     • Schedule is adjustable at runtime via input_datetime helpers.
-    • Resilient: re-evaluates state on HA start, automation reload, and every 5 minutes
-      to self-correct after restarts or missed events.
+    • Resilient: re-evaluates state on HA start, automation reload, schedule changes,
+      and mode changes. Self-loops to maintain pump cycles.
     • Use companion package (lettucegrow_package.yaml) for helpers, scripts, and dashboard.
   domain: automation
   homeassistant:
@@ -146,10 +146,6 @@ triggers:
   - trigger: event
     event_type: automation_reloaded
     id: reload
-  # Resilience: periodic check every 5 minutes to self-correct
-  - trigger: time_pattern
-    minutes: "/5"
-    id: periodic_check
   # React when override mode returns to normal
   - trigger: state
     entity_id: !input override_mode
