@@ -162,9 +162,9 @@ triggers:
     id: schedule_changed
 
 conditions:
-  # Only run normal cycle logic when mode is 'normal'
+  # Only run when mode is 'normal' or 'spraying' (pump keeps running during spraying)
   - condition: template
-    value_template: "{{ states(override_mode) == 'normal' }}"
+    value_template: "{{ states(override_mode) in ['normal', 'spraying'] }}"
 
 actions:
   - choose:
@@ -179,10 +179,18 @@ actions:
                 {{ now_time >= day_start or now_time < day_end }}
               {% endif %}
         sequence:
-          # Ensure light is ON
-          - action: switch.turn_on
-            target:
-              entity_id: !input light_switch
+          # Light ON only if not spraying
+          - if:
+              - condition: template
+                value_template: "{{ states(override_mode) == 'normal' }}"
+            then:
+              - action: switch.turn_on
+                target:
+                  entity_id: !input light_switch
+            else:
+              - action: switch.turn_off
+                target:
+                  entity_id: !input light_switch
           # Run pump cycle for day interval
           - action: switch.turn_on
             target:

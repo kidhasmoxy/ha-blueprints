@@ -80,6 +80,16 @@ input_number:
     unit_of_measurement: min
     mode: slider
 
+  lettucegrow_spraying_hours:
+    name: "Spraying Lights-Off Duration"
+    icon: mdi:spray
+    min: 1
+    max: 12
+    step: 1
+    unit_of_measurement: h
+    mode: slider
+    initial: 6
+
 timer:
   lettucegrow_override:
     name: "LettuceGrow Override Timer"
@@ -182,9 +192,10 @@ script:
   lettucegrow_spraying_cycle:
     alias: "LettuceGrow – Spraying Cycle"
     icon: mdi:spray
-    description: "Keep lights OFF for 6 hours after pest spraying. Automation is paused."
+    description: "Keep lights OFF for a configurable duration after pest spraying. Pump continues to run normally."
     variables:
       light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
+      spray_hours: "{{ states('input_number.lettucegrow_spraying_hours') | int }}"
     sequence:
       - action: input_select.select_option
         target:
@@ -198,9 +209,9 @@ script:
         target:
           entity_id: timer.lettucegrow_override
         data:
-          duration: "21600"
+          duration: "{{ spray_hours * 3600 }}"
       - delay:
-          hours: 6
+          hours: "{{ spray_hours }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode

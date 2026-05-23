@@ -153,8 +153,12 @@ views:
                 content: "### Spraying Cycle"
               - type: markdown
                 content: >
-                  Keeps lights **OFF for 6 hours** after pest spraying.
-                  Automation is paused during this time.
+                  Keeps lights **OFF** for a set duration after pest spraying.
+                  Pump continues to run on its normal schedule.
+              - type: entities
+                entities:
+                  - entity: input_number.lettucegrow_spraying_hours
+                    name: Lights-off duration (hours)
               - type: button
                 name: Start Spraying Cycle
                 icon: mdi:spray
