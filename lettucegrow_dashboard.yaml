@@ -161,9 +161,8 @@ views:
         cards:
           - type: markdown
             content: >
-              Adjust the day/night schedule below. Changes take effect
-              immediately — the automation will re-evaluate within 5 minutes
-              or on the next trigger.
+              Adjust the schedule and pump timing below.
+              Changes take effect on the next cycle.
 
           - type: entities
             title: Schedule
@@ -172,8 +171,16 @@ views:
                 name: Day cycle starts at
               - entity: input_datetime.lettucegrow_day_end
                 name: Night cycle starts at
+
+          - type: entities
+            title: Pump Timing
+            entities:
               - entity: input_number.lettucegrow_pump_duration
-                name: Pump run time per cycle (min)
+                name: Pump run time per cycle
+              - entity: input_number.lettucegrow_day_pump_interval
+                name: Day interval (minutes between runs)
+              - entity: input_number.lettucegrow_night_pump_interval
+                name: Night interval (minutes between runs)
 
       # --- Energy ---
       - title: Energy

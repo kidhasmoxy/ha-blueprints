@@ -1,23 +1,26 @@
 # ============================================================
-# LettuceGrow Nook – Companion Package
+# LettuceGrow Nook – Complete Package
 # ============================================================
 # Drop this file into your Home Assistant packages/ folder.
 # In configuration.yaml, ensure you have:
 #   homeassistant:
 #     packages: !include_dir_named packages/
 #
-# This package provides:
-#   • input_text helpers for device entity IDs (configure once in UI)
-#   • input_select for override mode (normal/snooze/cleaning/spraying)
-#   • input_datetime for adjustable day/night schedule
-#   • input_number for test pump duration and snooze duration
-#   • timer helpers for tracking override countdowns
-#   • Scripts: test_pump, snooze, cleaning_cycle, spraying_cycle, cancel_override
-#   • Automations: auto-expire overrides when timers finish
+# This package provides everything needed to run a LettuceGrow
+# Nook system. No blueprint required.
 #
-# After installing, set the input_text helpers via the UI or automations:
-#   input_text.lettucegrow_light_entity → your light switch entity_id
-#   input_text.lettucegrow_pump_entity  → your pump switch entity_id
+# How it works (all event-driven, no loops):
+#   1. Light automation triggers at day/night times and HA start
+#   2. Pump automation triggers every minute, checks if enough
+#      time has passed since the last run, then starts a timer
+#   3. Pump-off automation fires when the pump run timer ends
+#   4. Safety automation catches pump left on too long
+#   5. Override scripts (snooze, cleaning, spraying) pause normal
+#      operation; override expiry returns to normal
+#
+# After installing, verify the input_text helpers are correct:
+#   input_text.lettucegrow_light_entity → your light switch
+#   input_text.lettucegrow_pump_entity  → your pump switch
 # ============================================================
 
 # ============================================================
@@ -61,6 +64,12 @@ input_datetime:
     has_time: true
     initial: "22:00:00"
 
+  lettucegrow_last_pump_run:
+    name: "LettuceGrow Last Pump Run"
+    icon: mdi:clock-check
+    has_date: true
+    has_time: true
+
 input_number:
   lettucegrow_test_pump_minutes:
     name: "Test Pump Duration"
@@ -90,6 +99,26 @@ input_number:
     mode: slider
     initial: 10
 
+  lettucegrow_day_pump_interval:
+    name: "Day Pump Interval"
+    icon: mdi:timer-outline
+    min: 15
+    max: 180
+    step: 5
+    unit_of_measurement: min
+    mode: slider
+    initial: 60
+
+  lettucegrow_night_pump_interval:
+    name: "Night Pump Interval"
+    icon: mdi:timer-outline
+    min: 30
+    max: 360
+    step: 10
+    unit_of_measurement: min
+    mode: slider
+    initial: 180
+
   lettucegrow_spraying_hours:
     name: "Spraying Lights-Off Duration"
     icon: mdi:spray
@@ -105,6 +134,29 @@ timer:
     name: "LettuceGrow Override Timer"
     icon: mdi:timer-sand
 
+  lettucegrow_pump_run:
+    name: "LettuceGrow Pump Run Timer"
+    icon: mdi:pump
+    restore: true
+
+# ============================================================
+# TEMPLATE SENSORS
+# ============================================================
+template:
+  - binary_sensor:
+      - name: "LettuceGrow Is Daytime"
+        unique_id: lettucegrow_is_daytime
+        icon: mdi:white-balance-sunny
+        state: >
+          {% set t = now().strftime('%H:%M:%S') %}
+          {% set s = states('input_datetime.lettucegrow_day_start') %}
+          {% set e = states('input_datetime.lettucegrow_day_end') %}
+          {% if s < e %}
+            {{ s <= t < e }}
+          {% else %}
+            {{ t >= s or t < e }}
+          {% endif %}
+
 # ============================================================
 # SCRIPTS
 # ============================================================
@@ -112,7 +164,7 @@ script:
   lettucegrow_test_pump:
     alias: "LettuceGrow – Test Pump"
     icon: mdi:pump
-    description: "Run the pump for a set number of minutes without affecting automation."
+    description: "Run the pump for a set number of minutes. Sets mode to snooze during test."
     variables:
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
@@ -131,22 +183,12 @@ script:
           entity_id: timer.lettucegrow_override
         data:
           duration: "{{ states('input_number.lettucegrow_test_pump_minutes') | int * 60 }}"
-      - delay:
-          minutes: "{{ states('input_number.lettucegrow_test_pump_minutes') | int }}"
-      - action: switch.turn_off
-        target:
-          entity_id: "{{ pump_entity }}"
-      - action: input_select.select_option
-        target:
-          entity_id: input_select.lettucegrow_mode
-        data:
-          option: normal
     mode: single
 
   lettucegrow_snooze:
     alias: "LettuceGrow – Snooze"
     icon: mdi:sleep
-    description: "Pause automation, turn off pump and lights for a set duration."
+    description: "Pause all automation, turn off pump and lights for a set duration."
     variables:
       light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
@@ -158,6 +200,9 @@ script:
           entity_id: input_select.lettucegrow_mode
         data:
           option: snooze
+      - action: timer.cancel
+        target:
+          entity_id: timer.lettucegrow_pump_run
       - action: switch.turn_off
         target:
           entity_id: "{{ pump_entity }}"
@@ -174,7 +219,7 @@ script:
   lettucegrow_cleaning_cycle:
     alias: "LettuceGrow – Cleaning Cycle"
     icon: mdi:water-sync
-    description: "Run pump continuously for 2 hours (after adding water). Automation is paused."
+    description: "Run pump continuously for 2 hours. Automation is paused."
     variables:
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
@@ -193,22 +238,12 @@ script:
           entity_id: timer.lettucegrow_override
         data:
           duration: "7200"
-      - delay:
-          hours: 2
-      - action: switch.turn_off
-        target:
-          entity_id: "{{ pump_entity }}"
-      - action: input_select.select_option
-        target:
-          entity_id: input_select.lettucegrow_mode
-        data:
-          option: normal
     mode: single
 
   lettucegrow_spraying_cycle:
     alias: "LettuceGrow – Spraying Cycle"
     icon: mdi:spray
-    description: "Keep lights OFF for a configurable duration after pest spraying. Pump continues to run normally."
+    description: "Keep lights OFF for a configurable duration. Pump continues on its normal schedule."
     variables:
       light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
       spray_hours: "{{ states('input_number.lettucegrow_spraying_hours') | int }}"
@@ -228,30 +263,25 @@ script:
           entity_id: timer.lettucegrow_override
         data:
           duration: "{{ spray_hours * 3600 }}"
-      - delay:
-          hours: "{{ spray_hours }}"
-      - action: input_select.select_option
-        target:
-          entity_id: input_select.lettucegrow_mode
-        data:
-          option: normal
     mode: single
 
   lettucegrow_cancel_override:
     alias: "LettuceGrow – Cancel Override"
     icon: mdi:close-circle
-    description: "Cancel any active override and return to normal operation."
+    description: "Cancel any active override and return to normal operation immediately."
     variables:
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
-      - condition: template
-        value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
       - action: timer.cancel
         target:
           entity_id: timer.lettucegrow_override
-      - action: switch.turn_off
-        target:
-          entity_id: "{{ pump_entity }}"
+      - if:
+          - condition: template
+            value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: "{{ pump_entity }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -260,13 +290,193 @@ script:
     mode: single
 
 # ============================================================
-# AUTOMATION: Expire override when timer finishes
-# (backup in case script delay doesn't fire after restart)
+# AUTOMATIONS
 # ============================================================
 automation:
+  # ----------------------------------------------------------
+  # 1. LIGHT CONTROLLER
+  #    Event-driven: triggers at day/night times, HA start,
+  #    and mode changes. Sets light state accordingly.
+  # ----------------------------------------------------------
+  - id: lettucegrow_light_controller
+    alias: "LettuceGrow – Light Controller"
+    description: "Manage grow light based on day/night schedule and operating mode."
+    triggers:
+      - trigger: time
+        at: input_datetime.lettucegrow_day_start
+        id: day_start
+      - trigger: time
+        at: input_datetime.lettucegrow_day_end
+        id: night_start
+      - trigger: homeassistant
+        event: start
+        id: ha_start
+      - trigger: state
+        entity_id: input_select.lettucegrow_mode
+        id: mode_changed
+      - trigger: state
+        entity_id: input_datetime.lettucegrow_day_start
+        id: schedule_changed
+      - trigger: state
+        entity_id: input_datetime.lettucegrow_day_end
+        id: schedule_changed
+    conditions:
+      - condition: template
+        value_template: >
+          {{ states('input_select.lettucegrow_mode') in ['normal', 'spraying'] }}
+    actions:
+      - variables:
+          light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
+          mode_now: "{{ states('input_select.lettucegrow_mode') }}"
+          is_day: "{{ is_state('binary_sensor.lettucegrow_is_daytime', 'on') }}"
+      - condition: template
+        value_template: "{{ light_entity not in ['unknown', 'unavailable', ''] }}"
+      - if:
+          - condition: template
+            value_template: "{{ is_day and mode_now == 'normal' }}"
+        then:
+          - action: switch.turn_on
+            target:
+              entity_id: "{{ light_entity }}"
+        else:
+          - action: switch.turn_off
+            target:
+              entity_id: "{{ light_entity }}"
+    mode: single
+
+  # ----------------------------------------------------------
+  # 2. PUMP CYCLE START
+  #    Triggers every minute. Checks if enough time has passed
+  #    since the last pump run (day interval or night interval).
+  #    If so, turns pump on and starts the pump run timer.
+  # ----------------------------------------------------------
+  - id: lettucegrow_pump_cycle_start
+    alias: "LettuceGrow – Pump Cycle Start"
+    description: "Start a pump run when the interval has elapsed."
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+    conditions:
+      # Only run in normal or spraying mode
+      - condition: template
+        value_template: >
+          {{ states('input_select.lettucegrow_mode') in ['normal', 'spraying'] }}
+      # Only run if pump is currently off (don't restart mid-run)
+      - condition: template
+        value_template: >
+          {% set pump = states('input_text.lettucegrow_pump_entity') %}
+          {{ pump not in ['unknown', 'unavailable', ''] and is_state(pump, 'off') }}
+      # Only run if the pump run timer is not active (pump not in cooldown)
+      - condition: state
+        entity_id: timer.lettucegrow_pump_run
+        state: "idle"
+      # Check if enough time has passed since last pump run
+      - condition: template
+        value_template: >
+          {% set last_run = states('input_datetime.lettucegrow_last_pump_run') %}
+          {% if last_run in ['unknown', 'unavailable', ''] %}
+            true
+          {% else %}
+            {% set is_day = is_state('binary_sensor.lettucegrow_is_daytime', 'on') %}
+            {% set interval = states('input_number.lettucegrow_day_pump_interval') | int(60) if is_day else states('input_number.lettucegrow_night_pump_interval') | int(180) %}
+            {% set elapsed = (now() - strptime(last_run, '%Y-%m-%d %H:%M:%S')).total_seconds() / 60 %}
+            {{ elapsed >= interval }}
+          {% endif %}
+    actions:
+      - variables:
+          pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
+          pump_run_min: "{{ states('input_number.lettucegrow_pump_duration') | int(10) }}"
+      - action: switch.turn_on
+        target:
+          entity_id: "{{ pump_entity }}"
+      - action: timer.start
+        target:
+          entity_id: timer.lettucegrow_pump_run
+        data:
+          duration: "{{ pump_run_min * 60 }}"
+    mode: single
+
+  # ----------------------------------------------------------
+  # 3. PUMP CYCLE END
+  #    Fires when the pump run timer finishes. Turns pump off
+  #    and records the timestamp for interval tracking.
+  # ----------------------------------------------------------
+  - id: lettucegrow_pump_cycle_end
+    alias: "LettuceGrow – Pump Cycle End"
+    description: "Turn pump off when run timer finishes and record the run time."
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.lettucegrow_pump_run
+    actions:
+      - variables:
+          pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
+      - if:
+          - condition: template
+            value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: "{{ pump_entity }}"
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lettucegrow_last_pump_run
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+    mode: single
+
+  # ----------------------------------------------------------
+  # 4. PUMP SAFETY
+  #    If the pump has been on longer than pump_duration + 5 min
+  #    and we're not in cleaning mode, force it off.
+  # ----------------------------------------------------------
+  - id: lettucegrow_pump_safety
+    alias: "LettuceGrow – Pump Safety Shutoff"
+    description: "Force pump off if it has been on too long (catches edge cases)."
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+    conditions:
+      - condition: template
+        value_template: >
+          {% set pump = states('input_text.lettucegrow_pump_entity') %}
+          {% set mode = states('input_select.lettucegrow_mode') %}
+          {% set max_min = states('input_number.lettucegrow_pump_duration') | int(10) + 5 %}
+          {% if pump in ['unknown', 'unavailable', ''] %}
+            false
+          {% elif mode == 'cleaning' %}
+            false
+          {% elif is_state(pump, 'on') %}
+            {% set on_for = (now() - states[pump].last_changed).total_seconds() / 60 %}
+            {{ on_for > max_min }}
+          {% else %}
+            false
+          {% endif %}
+    actions:
+      - variables:
+          pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
+      - action: switch.turn_off
+        target:
+          entity_id: "{{ pump_entity }}"
+      - action: timer.cancel
+        target:
+          entity_id: timer.lettucegrow_pump_run
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lettucegrow_last_pump_run
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+    mode: single
+
+  # ----------------------------------------------------------
+  # 5. OVERRIDE EXPIRY
+  #    When the override timer finishes, return to normal mode.
+  #    Also turns off pump if it was left on (e.g. test pump).
+  # ----------------------------------------------------------
   - id: lettucegrow_override_expiry
     alias: "LettuceGrow – Override Expiry"
-    description: "Return to normal mode when override timer finishes (resilience backup)."
+    description: "Return to normal mode when override timer finishes."
     triggers:
       - trigger: event
         event_type: timer.finished
