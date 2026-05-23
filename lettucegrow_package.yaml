@@ -116,6 +116,8 @@ script:
     variables:
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
+      - condition: template
+        value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -149,6 +151,8 @@ script:
       light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
+      - condition: template
+        value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] and light_entity not in ['unknown', 'unavailable', ''] }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -174,6 +178,8 @@ script:
     variables:
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
+      - condition: template
+        value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -207,6 +213,8 @@ script:
       light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
       spray_hours: "{{ states('input_number.lettucegrow_spraying_hours') | int }}"
     sequence:
+      - condition: template
+        value_template: "{{ light_entity not in ['unknown', 'unavailable', ''] }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -236,6 +244,8 @@ script:
     variables:
       pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
+      - condition: template
+        value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
       - action: timer.cancel
         target:
           entity_id: timer.lettucegrow_override
@@ -265,9 +275,13 @@ automation:
     actions:
       - variables:
           pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
-      - action: switch.turn_off
-        target:
-          entity_id: "{{ pump_entity }}"
+      - if:
+          - condition: template
+            value_template: "{{ pump_entity not in ['unknown', 'unavailable', ''] }}"
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: "{{ pump_entity }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
