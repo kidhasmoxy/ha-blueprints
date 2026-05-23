@@ -198,3 +198,5 @@ views:
                 name: Day cycle starts at
               - entity: input_datetime.lettucegrow_day_end
                 name: Night cycle starts at
+              - entity: input_number.lettucegrow_pump_duration
+                name: Pump run time per cycle (min)

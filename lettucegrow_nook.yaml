@@ -82,15 +82,16 @@ blueprint:
       icon: mdi:timer-outline
       collapsed: true
       input:
-        pump_duration:
-          name: "Pump run duration (minutes)"
-          description: "How long the pump runs each cycle."
-          default: 10
+        pump_duration_helper:
+          name: "Pump run duration helper"
+          description: >
+            An input_number entity for how long the pump runs each cycle (minutes).
+            Adjustable from the dashboard at any time.
+          default: input_number.lettucegrow_pump_duration
           selector:
-            number:
-              min: 1
-              max: 30
-              unit_of_measurement: minutes
+            entity:
+              filter:
+                - domain: input_number
         day_pump_interval:
           name: "Day pump interval (minutes)"
           description: "How often the pump runs during the day cycle."
@@ -115,7 +116,8 @@ variables:
   day_end_entity: !input day_end_helper
   day_start: "{{ states(day_start_entity) }}"
   day_end: "{{ states(day_end_entity) }}"
-  pump_duration: !input pump_duration
+  pump_duration_entity: !input pump_duration_helper
+  pump_duration: "{{ states(pump_duration_entity) | int(10) }}"
   day_pump_interval: !input day_pump_interval
   night_pump_interval: !input night_pump_interval
   override_mode: !input override_mode
@@ -179,6 +181,10 @@ actions:
                 {{ now_time >= day_start or now_time < day_end }}
               {% endif %}
         sequence:
+          # Safety: turn pump off first to prevent extended runs on restart
+          - action: switch.turn_off
+            target:
+              entity_id: !input pump_switch
           # Light ON only if not spraying
           - if:
               - condition: template
@@ -196,7 +202,7 @@ actions:
             target:
               entity_id: !input pump_switch
           - delay:
-              minutes: !input pump_duration
+              minutes: "{{ pump_duration }}"
           - action: switch.turn_off
             target:
               entity_id: !input pump_switch
@@ -221,6 +227,10 @@ actions:
                 {{ not (now_time >= day_start or now_time < day_end) }}
               {% endif %}
         sequence:
+          # Safety: turn pump off first to prevent extended runs on restart
+          - action: switch.turn_off
+            target:
+              entity_id: !input pump_switch
           # Ensure light is OFF
           - action: switch.turn_off
             target:
@@ -230,7 +240,7 @@ actions:
             target:
               entity_id: !input pump_switch
           - delay:
-              minutes: !input pump_duration
+              minutes: "{{ pump_duration }}"
           - action: switch.turn_off
             target:
               entity_id: !input pump_switch

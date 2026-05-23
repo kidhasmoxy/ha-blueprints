@@ -80,6 +80,16 @@ input_number:
     unit_of_measurement: min
     mode: slider
 
+  lettucegrow_pump_duration:
+    name: "Pump Run Duration"
+    icon: mdi:pump
+    min: 1
+    max: 30
+    step: 1
+    unit_of_measurement: min
+    mode: slider
+    initial: 10
+
   lettucegrow_spraying_hours:
     name: "Spraying Lights-Off Duration"
     icon: mdi:spray
