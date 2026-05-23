@@ -7,6 +7,7 @@
 #     packages: !include_dir_named packages/
 #
 # This package provides:
+#   • input_text helpers for device entity IDs (configure once in UI)
 #   • input_select for override mode (normal/snooze/cleaning/spraying)
 #   • input_datetime for adjustable day/night schedule
 #   • input_number for test pump duration and snooze duration
@@ -14,18 +15,27 @@
 #   • Scripts: test_pump, snooze, cleaning_cycle, spraying_cycle, cancel_override
 #   • Automations: auto-expire overrides when timers finish
 #
-# *** CUSTOMIZE: Change the two anchor values below to your actual entity IDs ***
+# After installing, set the input_text helpers via the UI or automations:
+#   input_text.lettucegrow_light_entity → your light switch entity_id
+#   input_text.lettucegrow_pump_entity  → your pump switch entity_id
 # ============================================================
-
-homeassistant:
-  customize:
-    package.node_anchors:
-      light_switch: &light_switch switch.hydroponic_plug_switch
-      pump_switch: &pump_switch switch.hydroponic_plug_switch_2
 
 # ============================================================
 # INPUT HELPERS
 # ============================================================
+input_text:
+  lettucegrow_light_entity:
+    name: "LettuceGrow Light Entity"
+    icon: mdi:lightbulb
+    initial: "switch.hydroponic_plug_switch"
+    max: 255
+
+  lettucegrow_pump_entity:
+    name: "LettuceGrow Pump Entity"
+    icon: mdi:pump
+    initial: "switch.hydroponic_plug_switch_2"
+    max: 255
+
 input_select:
   lettucegrow_mode:
     name: "LettuceGrow Mode"
@@ -83,6 +93,8 @@ script:
     alias: "LettuceGrow – Test Pump"
     icon: mdi:pump
     description: "Run the pump for a set number of minutes without affecting automation."
+    variables:
+      pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
       - action: input_select.select_option
         target:
@@ -91,7 +103,7 @@ script:
           option: snooze
       - action: switch.turn_on
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: timer.start
         target:
           entity_id: timer.lettucegrow_override
@@ -101,7 +113,7 @@ script:
           minutes: "{{ states('input_number.lettucegrow_test_pump_minutes') | int }}"
       - action: switch.turn_off
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -113,6 +125,9 @@ script:
     alias: "LettuceGrow – Snooze"
     icon: mdi:sleep
     description: "Pause automation, turn off pump and lights for a set duration."
+    variables:
+      light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
+      pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
       - action: input_select.select_option
         target:
@@ -121,10 +136,10 @@ script:
           option: snooze
       - action: switch.turn_off
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: switch.turn_off
         target:
-          entity_id: *light_switch
+          entity_id: "{{ light_entity }}"
       - action: timer.start
         target:
           entity_id: timer.lettucegrow_override
@@ -136,6 +151,8 @@ script:
     alias: "LettuceGrow – Cleaning Cycle"
     icon: mdi:water-sync
     description: "Run pump continuously for 2 hours (after adding water). Automation is paused."
+    variables:
+      pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
       - action: input_select.select_option
         target:
@@ -144,7 +161,7 @@ script:
           option: cleaning
       - action: switch.turn_on
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: timer.start
         target:
           entity_id: timer.lettucegrow_override
@@ -154,7 +171,7 @@ script:
           hours: 2
       - action: switch.turn_off
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -166,6 +183,8 @@ script:
     alias: "LettuceGrow – Spraying Cycle"
     icon: mdi:spray
     description: "Keep lights OFF for 6 hours after pest spraying. Automation is paused."
+    variables:
+      light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
     sequence:
       - action: input_select.select_option
         target:
@@ -174,7 +193,7 @@ script:
           option: spraying
       - action: switch.turn_off
         target:
-          entity_id: *light_switch
+          entity_id: "{{ light_entity }}"
       - action: timer.start
         target:
           entity_id: timer.lettucegrow_override
@@ -193,13 +212,15 @@ script:
     alias: "LettuceGrow – Cancel Override"
     icon: mdi:close-circle
     description: "Cancel any active override and return to normal operation."
+    variables:
+      pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
     sequence:
       - action: timer.cancel
         target:
           entity_id: timer.lettucegrow_override
       - action: switch.turn_off
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
@@ -221,9 +242,11 @@ automation:
         event_data:
           entity_id: timer.lettucegrow_override
     actions:
+      - variables:
+          pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
       - action: switch.turn_off
         target:
-          entity_id: *pump_switch
+          entity_id: "{{ pump_entity }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.lettucegrow_mode
