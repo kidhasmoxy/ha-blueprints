@@ -157,6 +157,57 @@ template:
             {{ t >= s or t < e }}
           {% endif %}
 
+  - sensor:
+      - name: "LettuceGrow Next Pump Run"
+        unique_id: lettucegrow_next_pump_run
+        icon: mdi:pump
+        device_class: timestamp
+        state: >
+          {% set last_run = states('input_datetime.lettucegrow_last_pump_run') %}
+          {% if last_run in ['unknown', 'unavailable', ''] %}
+            unknown
+          {% else %}
+            {% set is_day = is_state('binary_sensor.lettucegrow_is_daytime', 'on') %}
+            {% set interval = states('input_number.lettucegrow_day_pump_interval') | int(60) if is_day else states('input_number.lettucegrow_night_pump_interval') | int(180) %}
+            {% set last = strptime(last_run, '%Y-%m-%d %H:%M:%S') %}
+            {% set next_run = last + timedelta(minutes=interval) %}
+            {% if next_run < now() %}
+              {{ now().isoformat() }}
+            {% else %}
+              {{ next_run.isoformat() }}
+            {% endif %}
+          {% endif %}
+
+      - name: "LettuceGrow Pump Status"
+        unique_id: lettucegrow_pump_status
+        icon: mdi:information-outline
+        state: >
+          {% set mode = states('input_select.lettucegrow_mode') %}
+          {% set pump = states('input_text.lettucegrow_pump_entity') %}
+          {% set pump_timer = states('timer.lettucegrow_pump_run') %}
+          {% if mode not in ['normal', 'spraying'] %}
+            {{ mode | title }} (paused)
+          {% elif pump not in ['unknown', 'unavailable', ''] and is_state(pump, 'on') %}
+            Pump running
+          {% elif pump_timer == 'active' %}
+            Pump running
+          {% else %}
+            Idle – waiting for next cycle
+          {% endif %}
+
+      - name: "LettuceGrow Current Cycle"
+        unique_id: lettucegrow_current_cycle
+        icon: mdi:sun-clock
+        state: >
+          {% set is_day = is_state('binary_sensor.lettucegrow_is_daytime', 'on') %}
+          {% set day_start = states('input_datetime.lettucegrow_day_start') %}
+          {% set day_end = states('input_datetime.lettucegrow_day_end') %}
+          {% if is_day %}
+            Day ({{ day_start[:5] }}–{{ day_end[:5] }})
+          {% else %}
+            Night ({{ day_end[:5] }}–{{ day_start[:5] }})
+          {% endif %}
+
 # ============================================================
 # SCRIPTS
 # ============================================================

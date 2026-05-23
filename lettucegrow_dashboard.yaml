@@ -29,29 +29,40 @@ views:
         type: grid
         cards:
           - type: entities
-            title: Current State
+            title: System
             show_header_toggle: false
             entities:
+              - entity: sensor.lettucegrow_current_cycle
+                name: Current Cycle
+              - entity: sensor.lettucegrow_pump_status
+                name: Pump Status
               - entity: input_select.lettucegrow_mode
                 name: Operating Mode
+              - entity: timer.lettucegrow_override
+                name: Override Timer
+
+          - type: entities
+            title: Devices
+            show_header_toggle: false
+            entities:
               - entity: *light_switch
                 name: Grow Light
               - entity: *pump_switch
                 name: Water Pump
-              - entity: timer.lettucegrow_override
-                name: Override Timer
+              - entity: *light_power
+                name: Light Power
+              - entity: *pump_power
+                name: Pump Power
 
           - type: entity
-            entity: *light_power
-            name: Light Power
-            icon: mdi:flash
-            unit: W
+            entity: sensor.lettucegrow_next_pump_run
+            name: Next Pump Run
+            icon: mdi:clock-fast
 
           - type: entity
-            entity: *pump_power
-            name: Pump Power
-            icon: mdi:flash
-            unit: W
+            entity: input_datetime.lettucegrow_last_pump_run
+            name: Last Pump Run
+            icon: mdi:clock-check
 
           - type: history-graph
             title: Activity (24h)
@@ -66,73 +77,33 @@ views:
       - title: Actions
         type: grid
         cards:
-          # --- Test Pump ---
-          - type: vertical-stack
-            cards:
-              - type: markdown
-                content: "### Test Pump"
-              - type: entities
-                entities:
-                  - entity: input_number.lettucegrow_test_pump_minutes
-                    name: Duration (minutes)
-              - type: button
-                name: Run Test Pump
-                icon: mdi:pump
-                tap_action:
-                  action: perform-action
-                  perform_action: script.lettucegrow_test_pump
+          - type: button
+            name: Test Pump
+            icon: mdi:pump
+            tap_action:
+              action: perform-action
+              perform_action: script.lettucegrow_test_pump
 
-          # --- Snooze ---
-          - type: vertical-stack
-            cards:
-              - type: markdown
-                content: "### Snooze System"
-              - type: entities
-                entities:
-                  - entity: input_number.lettucegrow_snooze_minutes
-                    name: Duration (minutes)
-              - type: button
-                name: Snooze
-                icon: mdi:sleep
-                tap_action:
-                  action: perform-action
-                  perform_action: script.lettucegrow_snooze
+          - type: button
+            name: Snooze
+            icon: mdi:sleep
+            tap_action:
+              action: perform-action
+              perform_action: script.lettucegrow_snooze
 
-          # --- Cleaning Cycle ---
-          - type: vertical-stack
-            cards:
-              - type: markdown
-                content: "### Cleaning Cycle"
-              - type: markdown
-                content: >
-                  Runs the pump continuously for **2 hours** after adding water.
-                  Automation is paused during this time.
-              - type: button
-                name: Start Cleaning Cycle
-                icon: mdi:water-sync
-                tap_action:
-                  action: perform-action
-                  perform_action: script.lettucegrow_cleaning_cycle
+          - type: button
+            name: Cleaning Cycle
+            icon: mdi:water-sync
+            tap_action:
+              action: perform-action
+              perform_action: script.lettucegrow_cleaning_cycle
 
-          # --- Spraying Cycle ---
-          - type: vertical-stack
-            cards:
-              - type: markdown
-                content: "### Spraying Cycle"
-              - type: markdown
-                content: >
-                  Keeps lights **OFF** for a set duration after pest spraying.
-                  Pump continues to run on its normal schedule.
-              - type: entities
-                entities:
-                  - entity: input_number.lettucegrow_spraying_hours
-                    name: Lights-off duration (hours)
-              - type: button
-                name: Start Spraying Cycle
-                icon: mdi:spray
-                tap_action:
-                  action: perform-action
-                  perform_action: script.lettucegrow_spraying_cycle
+          - type: button
+            name: Spraying Cycle
+            icon: mdi:spray
+            tap_action:
+              action: perform-action
+              perform_action: script.lettucegrow_spraying_cycle
 
           # --- Cancel Override ---
           - type: conditional
@@ -156,16 +127,11 @@ views:
     type: sections
     sections:
       # --- Schedule ---
-      - title: Day/Night Schedule
+      - title: Schedule
         type: grid
         cards:
-          - type: markdown
-            content: >
-              Adjust the schedule and pump timing below.
-              Changes take effect on the next cycle.
-
           - type: entities
-            title: Schedule
+            title: Day/Night Schedule
             entities:
               - entity: input_datetime.lettucegrow_day_start
                 name: Day cycle starts at
@@ -181,6 +147,32 @@ views:
                 name: Day interval (minutes between runs)
               - entity: input_number.lettucegrow_night_pump_interval
                 name: Night interval (minutes between runs)
+
+      # --- Override Durations ---
+      - title: Override Durations
+        type: grid
+        cards:
+          - type: entities
+            title: Default Durations
+            entities:
+              - entity: input_number.lettucegrow_test_pump_minutes
+                name: Test pump duration
+              - entity: input_number.lettucegrow_snooze_minutes
+                name: Snooze duration
+              - entity: input_number.lettucegrow_spraying_hours
+                name: Spraying lights-off duration
+
+      # --- Device Configuration ---
+      - title: Device Configuration
+        type: grid
+        cards:
+          - type: entities
+            title: Entity IDs
+            entities:
+              - entity: input_text.lettucegrow_light_entity
+                name: Light switch entity
+              - entity: input_text.lettucegrow_pump_entity
+                name: Pump switch entity
 
       # --- Energy ---
       - title: Energy
