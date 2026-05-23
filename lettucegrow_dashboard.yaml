@@ -174,6 +174,64 @@ views:
               - entity: input_text.lettucegrow_pump_entity
                 name: Pump switch entity
 
+      # --- Automations ---
+      - title: Automations
+        type: grid
+        cards:
+          - type: entities
+            title: Automations
+            show_header_toggle: false
+            entities:
+              - entity: automation.lettucegrow_light_controller
+                name: Light Controller
+              - entity: automation.lettucegrow_pump_cycle_start
+                name: Pump Cycle Start
+              - entity: automation.lettucegrow_pump_cycle_end
+                name: Pump Cycle End
+              - entity: automation.lettucegrow_pump_safety_shutoff
+                name: Pump Safety Shutoff
+              - entity: automation.lettucegrow_override_expiry
+                name: Override Expiry
+
+          - type: entities
+            title: Scripts
+            show_header_toggle: false
+            entities:
+              - entity: script.lettucegrow_test_pump
+                name: Test Pump
+              - entity: script.lettucegrow_snooze
+                name: Snooze
+              - entity: script.lettucegrow_cleaning_cycle
+                name: Cleaning Cycle
+              - entity: script.lettucegrow_spraying_cycle
+                name: Spraying Cycle
+              - entity: script.lettucegrow_cancel_override
+                name: Cancel Override
+
+          - type: entities
+            title: Timers
+            show_header_toggle: false
+            entities:
+              - entity: timer.lettucegrow_pump_run
+                name: Pump Run Timer
+              - entity: timer.lettucegrow_override
+                name: Override Timer
+
+          - type: entities
+            title: Sensors
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.lettucegrow_is_daytime
+                name: Is Daytime
+              - entity: sensor.lettucegrow_next_pump_run
+                name: Next Pump Run
+              - entity: sensor.lettucegrow_pump_status
+                name: Pump Status
+              - entity: sensor.lettucegrow_current_cycle
+                name: Current Cycle
+              - entity: input_datetime.lettucegrow_last_pump_run
+                name: Last Pump Run
+
       # --- Energy ---
       - title: Energy
         type: grid
