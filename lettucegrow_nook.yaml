@@ -1,0 +1,193 @@
+blueprint:
+  name: "LettuceGrow Nook – Day/Night Light & Pump Controller"
+  description: >
+    Manages a LettuceGrow Nook hydroponic system with automatic day/night cycles.
+    • Day cycle: light ON continuously, pump runs 10 min every hour.
+    • Night cycle: light OFF, pump runs 10 min every 3 hours.
+    • Resilient: re-evaluates state on HA start, automation reload, and every 5 minutes
+      to self-correct after restarts or missed events.
+  domain: automation
+  homeassistant:
+    min_version: "2025.1.0"
+
+  input:
+    schedule:
+      name: "Schedule"
+      icon: mdi:clock-outline
+      collapsed: false
+      input:
+        day_start:
+          name: "Day cycle start time"
+          description: "Time when the day cycle begins (light ON, pump every hour)."
+          default: "06:00:00"
+          selector:
+            time:
+        day_end:
+          name: "Day cycle end time"
+          description: "Time when the night cycle begins (light OFF, pump every 3 hours)."
+          default: "22:00:00"
+          selector:
+            time:
+
+    devices:
+      name: "Devices"
+      icon: mdi:sprout
+      collapsed: false
+      input:
+        light_switch:
+          name: "Grow light switch"
+          description: "The switch entity that controls the grow light."
+          selector:
+            entity:
+              filter:
+                - domain: switch
+        pump_switch:
+          name: "Water pump switch"
+          description: "The switch entity that controls the water pump."
+          selector:
+            entity:
+              filter:
+                - domain: switch
+
+    timing:
+      name: "Pump Timing"
+      icon: mdi:timer-outline
+      collapsed: true
+      input:
+        pump_duration:
+          name: "Pump run duration (minutes)"
+          description: "How long the pump runs each cycle."
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 30
+              unit_of_measurement: minutes
+        day_pump_interval:
+          name: "Day pump interval (minutes)"
+          description: "How often the pump runs during the day cycle."
+          default: 60
+          selector:
+            number:
+              min: 15
+              max: 180
+              unit_of_measurement: minutes
+        night_pump_interval:
+          name: "Night pump interval (minutes)"
+          description: "How often the pump runs during the night cycle."
+          default: 180
+          selector:
+            number:
+              min: 30
+              max: 360
+              unit_of_measurement: minutes
+
+variables:
+  day_start: !input day_start
+  day_end: !input day_end
+  pump_duration: !input pump_duration
+  day_pump_interval: !input day_pump_interval
+  night_pump_interval: !input night_pump_interval
+  is_day: >
+    {% set now_time = now().strftime('%H:%M:%S') %}
+    {% if day_start < day_end %}
+      {{ day_start <= now_time < day_end }}
+    {% else %}
+      {{ now_time >= day_start or now_time < day_end }}
+    {% endif %}
+  current_interval: >
+    {{ day_pump_interval if is_day else night_pump_interval }}
+
+triggers:
+  # Day cycle start
+  - trigger: time
+    at: !input day_start
+    id: day_start
+  # Night cycle start
+  - trigger: time
+    at: !input day_end
+    id: night_start
+  # Resilience: re-evaluate on HA start
+  - trigger: homeassistant
+    event: start
+    id: ha_start
+  # Resilience: re-evaluate on automation reload
+  - trigger: event
+    event_type: automation_reloaded
+    id: reload
+  # Resilience: periodic check every 5 minutes to self-correct
+  - trigger: time_pattern
+    minutes: "/5"
+    id: periodic_check
+
+actions:
+  - choose:
+      # ===== DAY CYCLE =====
+      - conditions:
+          - condition: template
+            value_template: >
+              {% set now_time = now().strftime('%H:%M:%S') %}
+              {% if day_start < day_end %}
+                {{ day_start <= now_time < day_end }}
+              {% else %}
+                {{ now_time >= day_start or now_time < day_end }}
+              {% endif %}
+        sequence:
+          # Ensure light is ON
+          - action: switch.turn_on
+            target:
+              entity_id: !input light_switch
+          # Run pump cycle for day interval
+          - action: switch.turn_on
+            target:
+              entity_id: !input pump_switch
+          - delay:
+              minutes: !input pump_duration
+          - action: switch.turn_off
+            target:
+              entity_id: !input pump_switch
+          # Wait for remainder of the day interval then repeat
+          - delay:
+              minutes: >
+                {{ day_pump_interval - pump_duration }}
+          - action: automation.trigger
+            target:
+              entity_id: "{{ this.entity_id }}"
+            data:
+              skip_condition: false
+
+      # ===== NIGHT CYCLE =====
+      - conditions:
+          - condition: template
+            value_template: >
+              {% set now_time = now().strftime('%H:%M:%S') %}
+              {% if day_start < day_end %}
+                {{ not (day_start <= now_time < day_end) }}
+              {% else %}
+                {{ not (now_time >= day_start or now_time < day_end) }}
+              {% endif %}
+        sequence:
+          # Ensure light is OFF
+          - action: switch.turn_off
+            target:
+              entity_id: !input light_switch
+          # Run pump cycle for night interval
+          - action: switch.turn_on
+            target:
+              entity_id: !input pump_switch
+          - delay:
+              minutes: !input pump_duration
+          - action: switch.turn_off
+            target:
+              entity_id: !input pump_switch
+          # Wait for remainder of the night interval then repeat
+          - delay:
+              minutes: >
+                {{ night_pump_interval - pump_duration }}
+          - action: automation.trigger
+            target:
+              entity_id: "{{ this.entity_id }}"
+            data:
+              skip_condition: false
+
+mode: restart
