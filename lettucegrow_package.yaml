@@ -20,9 +20,8 @@
 homeassistant:
   customize:
     package.node_anchors:
-      # Change these to match your actual switch entity IDs
-      light_switch: &light_switch switch.lettucegrow_light
-      pump_switch: &pump_switch switch.lettucegrow_pump
+      light_switch: &light_switch switch.hydroponic_plug_switch
+      pump_switch: &pump_switch switch.hydroponic_plug_switch_2
 
 # ============================================================
 # INPUT HELPERS
