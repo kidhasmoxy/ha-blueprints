@@ -15,13 +15,14 @@
 #   Pump energy:   sensor.hydroponic_plug_summation_delivered_2
 # ============================================================
 
+# Define all entity IDs once here — change only this section
 anchors:
-  light_switch: switch.hydroponic_plug_switch
-  pump_switch: switch.hydroponic_plug_switch_2
-  light_power: sensor.hydroponic_plug_power
-  pump_power: sensor.hydroponic_plug_power_2
-  light_energy: sensor.hydroponic_plug_summation_delivered
-  pump_energy: sensor.hydroponic_plug_summation_delivered_2
+  light_switch: &light_switch switch.hydroponic_plug_switch
+  pump_switch: &pump_switch switch.hydroponic_plug_switch_2
+  light_power: &light_power sensor.hydroponic_plug_power
+  pump_power: &pump_power sensor.hydroponic_plug_power_2
+  light_energy: &light_energy sensor.hydroponic_plug_summation_delivered
+  pump_energy: &pump_energy sensor.hydroponic_plug_summation_delivered_2
 title: LettuceGrow Nook
 views:
   # ===== TAB 1: CONTROL =====
@@ -51,13 +52,13 @@ views:
             title: Devices
             show_header_toggle: false
             entities:
-              - entity: switch.hydroponic_plug_switch
+              - entity: *light_switch
                 name: Grow Light
-              - entity: switch.hydroponic_plug_switch_2
+              - entity: *pump_switch
                 name: Water Pump
-              - entity: sensor.hydroponic_plug_power
+              - entity: *light_power
                 name: Light Power
-              - entity: sensor.hydroponic_plug_power_2
+              - entity: *pump_power
                 name: Pump Power
           - type: entity
             entity: sensor.lettucegrow_next_pump_run
@@ -71,9 +72,9 @@ views:
             title: Activity (24h)
             hours_to_show: 24
             entities:
-              - entity: switch.hydroponic_plug_switch
+              - entity: *light_switch
                 name: Light
-              - entity: switch.hydroponic_plug_switch_2
+              - entity: *pump_switch
                 name: Pump
       # --- Actions ---
       - type: grid
@@ -124,12 +125,12 @@ views:
           - type: heading
             heading: Energy
           - type: entity
-            entity: sensor.hydroponic_plug_summation_delivered
+            entity: *light_energy
             name: Light Energy (Total)
             icon: mdi:lightning-bolt
             unit: kWh
           - type: entity
-            entity: sensor.hydroponic_plug_summation_delivered_2
+            entity: *pump_energy
             name: Pump Energy (Total)
             icon: mdi:lightning-bolt
             unit: kWh
@@ -140,9 +141,9 @@ views:
             stat_types:
               - sum
             entities:
-              - entity: sensor.hydroponic_plug_summation_delivered
+              - entity: *light_energy
                 name: Light
-              - entity: sensor.hydroponic_plug_summation_delivered_2
+              - entity: *pump_energy
                 name: Pump
             hide_legend: false
             logarithmic_scale: false
