@@ -4,15 +4,8 @@
 # To use: Settings > Dashboards > Add Dashboard > Manual
 # Paste this YAML into the Raw Configuration Editor.
 #
-# *** CONFIGURE HERE: Update entity IDs below to match your devices ***
-#
-# Entity ID reference (used throughout this dashboard):
-#   Light switch:  switch.hydroponic_plug_switch
-#   Pump switch:   switch.hydroponic_plug_switch_2
-#   Light power:   sensor.hydroponic_plug_power
-#   Pump power:    sensor.hydroponic_plug_power_2
-#   Light energy:  sensor.hydroponic_plug_summation_delivered
-#   Pump energy:   sensor.hydroponic_plug_summation_delivered_2
+# Note: HA's UI editor will resolve anchors to plain entity IDs
+# on save. Re-apply anchors here after any UI edits.
 # ============================================================
 
 # Define all entity IDs once here — change only this section
@@ -23,6 +16,7 @@ anchors:
   pump_power: &pump_power sensor.hydroponic_plug_power_2
   light_energy: &light_energy sensor.hydroponic_plug_summation_delivered
   pump_energy: &pump_energy sensor.hydroponic_plug_summation_delivered_2
+
 title: LettuceGrow Nook
 views:
   # ===== TAB 1: CONTROL =====
@@ -124,20 +118,24 @@ views:
         cards:
           - type: heading
             heading: Energy
-          - type: entity
+          - type: statistic
             entity: *light_energy
-            name: Light Energy (Total)
-            icon: mdi:lightning-bolt
-            unit: kWh
-          - type: entity
+            period: &ref_0
+              calendar:
+                period: day
+            stat_type: change
+            energy_date_selection: false
+            name: Light Energy Today
+          - type: statistic
             entity: *pump_energy
-            name: Pump Energy (Total)
-            icon: mdi:lightning-bolt
-            unit: kWh
-          - type: statistics-graph
-            title: Energy Consumption
-            chart_type: line
+            period: *ref_0
+            stat_type: change
+            theme: Mushroom
+            name: Pump Energy Today
+          - chart_type: bar
             period: day
+            type: statistics-graph
+            title: Daily Energy Consumption
             stat_types:
               - sum
             entities:
@@ -145,8 +143,10 @@ views:
                 name: Light
               - entity: *pump_energy
                 name: Pump
+            energy_date_selection: false
             hide_legend: false
             logarithmic_scale: false
+            days_to_show: 5
     # --- Badges: quick-glance status at top of page ---
     badges:
       - type: entity
