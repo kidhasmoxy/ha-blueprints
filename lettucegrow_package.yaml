@@ -376,19 +376,12 @@ automation:
           light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
           mode_now: "{{ states('input_select.lettucegrow_mode') }}"
           # Use trigger ID if available; fall back to binary sensor for HA start / mode change
-          is_day: >
-            {% if trigger.id == 'day_start' %}
-              true
-            {% elif trigger.id == 'night_start' %}
-              false
-            {% else %}
-              {{ is_state('binary_sensor.lettucegrow_is_daytime', 'on') }}
-            {% endif %}
+          is_day: "{% if trigger.id == 'day_start' %}true{% elif trigger.id == 'night_start' %}false{% else %}{{ is_state('binary_sensor.lettucegrow_is_daytime', 'on') }}{% endif %}"
       - condition: template
         value_template: "{{ light_entity not in ['unknown', 'unavailable', ''] }}"
       - if:
           - condition: template
-            value_template: "{{ is_day | bool and mode_now == 'normal' }}"
+            value_template: "{{ is_day | trim | bool and mode_now == 'normal' }}"
         then:
           - action: switch.turn_on
             target:
@@ -502,8 +495,9 @@ automation:
             false
           {% elif mode == 'cleaning' %}
             false
-          {% elif is_state(pump, 'on') %}
-            {% set on_for = (now() - states[pump].last_changed).total_seconds() / 60 %}
+          {% elif states(pump) == 'on' %}
+            {% set changed = states[pump].last_changed if states[pump] is not none else now() %}
+            {% set on_for = (now() - changed).total_seconds() / 60 %}
             {{ on_for > max_min }}
           {% else %}
             false
