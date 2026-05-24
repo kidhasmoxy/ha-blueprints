@@ -375,12 +375,20 @@ automation:
       - variables:
           light_entity: "{{ states('input_text.lettucegrow_light_entity') }}"
           mode_now: "{{ states('input_select.lettucegrow_mode') }}"
-          is_day: "{{ is_state('binary_sensor.lettucegrow_is_daytime', 'on') }}"
+          # Use trigger ID if available; fall back to binary sensor for HA start / mode change
+          is_day: >
+            {% if trigger.id == 'day_start' %}
+              true
+            {% elif trigger.id == 'night_start' %}
+              false
+            {% else %}
+              {{ is_state('binary_sensor.lettucegrow_is_daytime', 'on') }}
+            {% endif %}
       - condition: template
         value_template: "{{ light_entity not in ['unknown', 'unavailable', ''] }}"
       - if:
           - condition: template
-            value_template: "{{ is_day and mode_now == 'normal' }}"
+            value_template: "{{ is_day | bool and mode_now == 'normal' }}"
         then:
           - action: switch.turn_on
             target:
