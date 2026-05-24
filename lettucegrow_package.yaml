@@ -434,6 +434,12 @@ automation:
       - variables:
           pump_entity: "{{ states('input_text.lettucegrow_pump_entity') }}"
           pump_run_min: "{{ states('input_number.lettucegrow_pump_duration') | int(10) }}"
+      # Record start time first so interval is measured start-to-start
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lettucegrow_last_pump_run
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
       - action: switch.turn_on
         target:
           entity_id: "{{ pump_entity }}"
@@ -446,12 +452,11 @@ automation:
 
   # ----------------------------------------------------------
   # 3. PUMP CYCLE END
-  #    Fires when the pump run timer finishes. Turns pump off
-  #    and records the timestamp for interval tracking.
+  #    Fires when the pump run timer finishes. Turns pump off.
   # ----------------------------------------------------------
   - id: lettucegrow_pump_cycle_end
     alias: "LettuceGrow – Pump Cycle End"
-    description: "Turn pump off when run timer finishes and record the run time."
+    description: "Turn pump off when run timer finishes."
     triggers:
       - trigger: event
         event_type: timer.finished
@@ -467,11 +472,6 @@ automation:
           - action: switch.turn_off
             target:
               entity_id: "{{ pump_entity }}"
-      - action: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.lettucegrow_last_pump_run
-        data:
-          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
     mode: single
 
   # ----------------------------------------------------------
