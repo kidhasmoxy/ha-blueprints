@@ -1,21 +1,27 @@
 # ============================================================
 # LettuceGrow Nook – Dashboard
 # ============================================================
-# To use this dashboard, go to Settings > Dashboards > Add Dashboard
-# Choose "Manual" and paste this YAML into the Raw Configuration Editor.
+# To use: Settings > Dashboards > Add Dashboard > Manual
+# Paste this YAML into the Raw Configuration Editor.
 #
-# *** CONFIGURE HERE: Change these anchors to match your entity IDs ***
+# *** CONFIGURE HERE: Update entity IDs below to match your devices ***
+#
+# Entity ID reference (used throughout this dashboard):
+#   Light switch:  switch.hydroponic_plug_switch
+#   Pump switch:   switch.hydroponic_plug_switch_2
+#   Light power:   sensor.hydroponic_plug_power
+#   Pump power:    sensor.hydroponic_plug_power_2
+#   Light energy:  sensor.hydroponic_plug_summation_delivered
+#   Pump energy:   sensor.hydroponic_plug_summation_delivered_2
 # ============================================================
 
-# Define all entity IDs once here — change only this section
 anchors:
-  light_switch: &light_switch switch.hydroponic_plug_switch
-  pump_switch: &pump_switch switch.hydroponic_plug_switch_2
-  light_power: &light_power sensor.hydroponic_plug_power
-  pump_power: &pump_power sensor.hydroponic_plug_power_2
-  light_energy: &light_energy sensor.hydroponic_plug_summation_delivered
-  pump_energy: &pump_energy sensor.hydroponic_plug_summation_delivered_2
-
+  light_switch: switch.hydroponic_plug_switch
+  pump_switch: switch.hydroponic_plug_switch_2
+  light_power: sensor.hydroponic_plug_power
+  pump_power: sensor.hydroponic_plug_power_2
+  light_energy: sensor.hydroponic_plug_summation_delivered
+  pump_energy: sensor.hydroponic_plug_summation_delivered_2
 title: LettuceGrow Nook
 views:
   # ===== TAB 1: CONTROL =====
@@ -25,9 +31,10 @@ views:
     type: sections
     sections:
       # --- Status ---
-      - title: Status
-        type: grid
+      - type: grid
         cards:
+          - type: heading
+            heading: Status
           - type: entities
             title: System
             show_header_toggle: false
@@ -40,72 +47,64 @@ views:
                 name: Operating Mode
               - entity: timer.lettucegrow_override
                 name: Override Timer
-
           - type: entities
             title: Devices
             show_header_toggle: false
             entities:
-              - entity: *light_switch
+              - entity: switch.hydroponic_plug_switch
                 name: Grow Light
-              - entity: *pump_switch
+              - entity: switch.hydroponic_plug_switch_2
                 name: Water Pump
-              - entity: *light_power
+              - entity: sensor.hydroponic_plug_power
                 name: Light Power
-              - entity: *pump_power
+              - entity: sensor.hydroponic_plug_power_2
                 name: Pump Power
-
           - type: entity
             entity: sensor.lettucegrow_next_pump_run
             name: Next Pump Run
             icon: mdi:clock-fast
-
           - type: entity
             entity: input_datetime.lettucegrow_last_pump_run
             name: Last Pump Run
             icon: mdi:clock-check
-
           - type: history-graph
             title: Activity (24h)
             hours_to_show: 24
             entities:
-              - entity: *light_switch
+              - entity: switch.hydroponic_plug_switch
                 name: Light
-              - entity: *pump_switch
+              - entity: switch.hydroponic_plug_switch_2
                 name: Pump
-
       # --- Actions ---
-      - title: Actions
-        type: grid
+      - type: grid
         cards:
+          - type: heading
+            heading: Actions
           - type: button
             name: Test Pump
             icon: mdi:pump
             tap_action:
               action: perform-action
               perform_action: script.lettucegrow_test_pump
-
           - type: button
             name: Snooze
             icon: mdi:sleep
             tap_action:
               action: perform-action
               perform_action: script.lettucegrow_snooze
-
           - type: button
             name: Cleaning Cycle
             icon: mdi:water-sync
             tap_action:
               action: perform-action
               perform_action: script.lettucegrow_cleaning_cycle
-
           - type: button
             name: Spraying Cycle
             icon: mdi:spray
             tap_action:
               action: perform-action
               perform_action: script.lettucegrow_spraying_cycle
-
-          # --- Cancel Override ---
+          # Cancel Override (only visible when an override is active)
           - type: conditional
             conditions:
               - condition: state
@@ -119,7 +118,66 @@ views:
               tap_action:
                 action: perform-action
                 perform_action: script.lettucegrow_cancel_override
-
+      # --- Energy ---
+      - type: grid
+        cards:
+          - type: heading
+            heading: Energy
+          - type: entity
+            entity: sensor.hydroponic_plug_summation_delivered
+            name: Light Energy (Total)
+            icon: mdi:lightning-bolt
+            unit: kWh
+          - type: entity
+            entity: sensor.hydroponic_plug_summation_delivered_2
+            name: Pump Energy (Total)
+            icon: mdi:lightning-bolt
+            unit: kWh
+          - type: statistics-graph
+            title: Energy Consumption
+            chart_type: line
+            period: day
+            stat_types:
+              - sum
+            entities:
+              - entity: sensor.hydroponic_plug_summation_delivered
+                name: Light
+              - entity: sensor.hydroponic_plug_summation_delivered_2
+                name: Pump
+            hide_legend: false
+            logarithmic_scale: false
+    # --- Badges: quick-glance status at top of page ---
+    badges:
+      - type: entity
+        show_name: false
+        show_state: true
+        show_icon: true
+        entity: sensor.lettucegrow_current_cycle
+      - type: entity
+        show_name: false
+        show_state: true
+        show_icon: true
+        entity: sensor.lettucegrow_next_pump_run
+      - type: entity
+        show_name: true
+        show_state: true
+        show_icon: true
+        entity: input_select.lettucegrow_mode
+        name: Mode
+        tap_action:
+          action: none
+      - type: entity
+        show_name: true
+        show_state: true
+        show_icon: true
+        entity: timer.lettucegrow_override
+        name: Override Timer
+        tap_action:
+          action: none
+        visibility:
+          - condition: state
+            entity: timer.lettucegrow_override
+            state_not: idle
   # ===== TAB 2: SETTINGS =====
   - title: Settings
     path: settings
@@ -127,9 +185,10 @@ views:
     type: sections
     sections:
       # --- Schedule ---
-      - title: Schedule
-        type: grid
+      - type: grid
         cards:
+          - type: heading
+            heading: Schedule
           - type: entities
             title: Day/Night Schedule
             entities:
@@ -137,7 +196,6 @@ views:
                 name: Day cycle starts at
               - entity: input_datetime.lettucegrow_day_end
                 name: Night cycle starts at
-
           - type: entities
             title: Pump Timing
             entities:
@@ -147,11 +205,11 @@ views:
                 name: Day interval (minutes between runs)
               - entity: input_number.lettucegrow_night_pump_interval
                 name: Night interval (minutes between runs)
-
       # --- Override Durations ---
-      - title: Override Durations
-        type: grid
+      - type: grid
         cards:
+          - type: heading
+            heading: Override Durations
           - type: entities
             title: Default Durations
             entities:
@@ -161,11 +219,11 @@ views:
                 name: Snooze duration
               - entity: input_number.lettucegrow_spraying_hours
                 name: Spraying lights-off duration
-
       # --- Device Configuration ---
-      - title: Device Configuration
-        type: grid
+      - type: grid
         cards:
+          - type: heading
+            heading: Device Configuration
           - type: entities
             title: Entity IDs
             entities:
@@ -173,11 +231,11 @@ views:
                 name: Light switch entity
               - entity: input_text.lettucegrow_pump_entity
                 name: Pump switch entity
-
-      # --- Automations ---
-      - title: Automations
-        type: grid
+      # --- Package Components ---
+      - type: grid
         cards:
+          - type: heading
+            heading: Automations
           - type: entities
             title: Automations
             show_header_toggle: false
@@ -192,7 +250,6 @@ views:
                 name: Pump Safety Shutoff
               - entity: automation.lettucegrow_override_expiry
                 name: Override Expiry
-
           - type: entities
             title: Scripts
             show_header_toggle: false
@@ -207,7 +264,6 @@ views:
                 name: Spraying Cycle
               - entity: script.lettucegrow_cancel_override
                 name: Cancel Override
-
           - type: entities
             title: Timers
             show_header_toggle: false
@@ -216,7 +272,6 @@ views:
                 name: Pump Run Timer
               - entity: timer.lettucegrow_override
                 name: Override Timer
-
           - type: entities
             title: Sensors
             show_header_toggle: false
@@ -231,32 +286,3 @@ views:
                 name: Current Cycle
               - entity: input_datetime.lettucegrow_last_pump_run
                 name: Last Pump Run
-
-      # --- Energy ---
-      - title: Energy
-        type: grid
-        cards:
-          - type: entity
-            entity: *light_energy
-            name: Light Energy (Total)
-            icon: mdi:lightning-bolt
-            unit: kWh
-
-          - type: entity
-            entity: *pump_energy
-            name: Pump Energy (Total)
-            icon: mdi:lightning-bolt
-            unit: kWh
-
-          - type: energy-date-selection
-
-          - type: statistics-graph
-            title: Energy Consumption
-            period: day
-            stat_types:
-              - sum
-            entities:
-              - entity: *light_energy
-                name: Light
-              - entity: *pump_energy
-                name: Pump
