@@ -251,6 +251,8 @@ views:
                 name: Pump Safety Shutoff
               - entity: automation.lettucegrow_override_expiry
                 name: Override Expiry
+              - entity: automation.lettucegrow_initialize_defaults
+                name: Initialize Defaults
           - type: entities
             title: Scripts
             show_header_toggle: false

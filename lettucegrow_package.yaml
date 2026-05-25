@@ -30,13 +30,11 @@ input_text:
   lettucegrow_light_entity:
     name: "LettuceGrow Light Entity"
     icon: mdi:lightbulb
-    initial: "switch.hydroponic_plug_switch"
     max: 255
 
   lettucegrow_pump_entity:
     name: "LettuceGrow Pump Entity"
     icon: mdi:pump
-    initial: "switch.hydroponic_plug_switch_2"
     max: 255
 
 input_select:
@@ -55,14 +53,12 @@ input_datetime:
     icon: mdi:weather-sunny
     has_date: false
     has_time: true
-    initial: "06:00:00"
 
   lettucegrow_day_end:
     name: "LettuceGrow Day End"
     icon: mdi:weather-night
     has_date: false
     has_time: true
-    initial: "22:00:00"
 
   lettucegrow_last_pump_run:
     name: "LettuceGrow Last Pump Run"
@@ -97,7 +93,6 @@ input_number:
     step: 1
     unit_of_measurement: min
     mode: slider
-    initial: 10
 
   lettucegrow_day_pump_interval:
     name: "Day Pump Interval"
@@ -107,7 +102,6 @@ input_number:
     step: 5
     unit_of_measurement: min
     mode: slider
-    initial: 60
 
   lettucegrow_night_pump_interval:
     name: "Night Pump Interval"
@@ -117,7 +111,6 @@ input_number:
     step: 10
     unit_of_measurement: min
     mode: slider
-    initial: 180
 
   lettucegrow_spraying_hours:
     name: "Spraying Lights-Off Duration"
@@ -127,7 +120,6 @@ input_number:
     step: 1
     unit_of_measurement: h
     mode: slider
-    initial: 6
 
 timer:
   lettucegrow_override:
@@ -546,4 +538,111 @@ automation:
           entity_id: input_select.lettucegrow_mode
         data:
           option: normal
+    mode: single
+
+  # ----------------------------------------------------------
+  # 6. INITIALIZATION
+  #    On first boot (or if helpers are empty), set sensible
+  #    defaults. Does nothing if values are already configured.
+  # ----------------------------------------------------------
+  - id: lettucegrow_initialize_defaults
+    alias: "LettuceGrow – Initialize Defaults"
+    description: "Set default values for helpers on first install only."
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      # --- input_text: set entity IDs if empty ---
+      - if:
+          - condition: template
+            value_template: "{{ states('input_text.lettucegrow_light_entity') in ['unknown', 'unavailable', ''] }}"
+        then:
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.lettucegrow_light_entity
+            data:
+              value: "switch.hydroponic_plug_switch"
+      - if:
+          - condition: template
+            value_template: "{{ states('input_text.lettucegrow_pump_entity') in ['unknown', 'unavailable', ''] }}"
+        then:
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.lettucegrow_pump_entity
+            data:
+              value: "switch.hydroponic_plug_switch_2"
+      # --- input_datetime: set schedule if at midnight (unconfigured) ---
+      - if:
+          - condition: template
+            value_template: "{{ states('input_datetime.lettucegrow_day_start') in ['unknown', 'unavailable', '00:00:00'] }}"
+        then:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.lettucegrow_day_start
+            data:
+              time: "06:00:00"
+      - if:
+          - condition: template
+            value_template: "{{ states('input_datetime.lettucegrow_day_end') in ['unknown', 'unavailable', '00:00:00'] }}"
+        then:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.lettucegrow_day_end
+            data:
+              time: "22:00:00"
+      # --- input_number: set defaults if at minimum (unconfigured) ---
+      - if:
+          - condition: template
+            value_template: "{{ states('input_number.lettucegrow_pump_duration') | float(0) <= 1 }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.lettucegrow_pump_duration
+            data:
+              value: 2
+      - if:
+          - condition: template
+            value_template: "{{ states('input_number.lettucegrow_day_pump_interval') | float(0) <= 15 }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.lettucegrow_day_pump_interval
+            data:
+              value: 60
+      - if:
+          - condition: template
+            value_template: "{{ states('input_number.lettucegrow_night_pump_interval') | float(0) <= 30 }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.lettucegrow_night_pump_interval
+            data:
+              value: 180
+      - if:
+          - condition: template
+            value_template: "{{ states('input_number.lettucegrow_test_pump_minutes') | float(0) <= 1 }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.lettucegrow_test_pump_minutes
+            data:
+              value: 5
+      - if:
+          - condition: template
+            value_template: "{{ states('input_number.lettucegrow_snooze_minutes') | float(0) <= 1 }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.lettucegrow_snooze_minutes
+            data:
+              value: 30
+      - if:
+          - condition: template
+            value_template: "{{ states('input_number.lettucegrow_spraying_hours') | float(0) <= 1 }}"
+        then:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.lettucegrow_spraying_hours
+            data:
+              value: 6
     mode: single
