@@ -26,6 +26,16 @@
 # ============================================================
 # INPUT HELPERS
 # ============================================================
+homeassistant:
+  customize:
+    input_boolean.lettucegrow_initialized:
+      hidden: true
+
+input_boolean:
+  lettucegrow_initialized:
+    name: "LettuceGrow Initialized"
+    icon: mdi:check-circle
+
 input_text:
   lettucegrow_light_entity:
     name: "LettuceGrow Light Entity"
@@ -542,8 +552,8 @@ automation:
 
   # ----------------------------------------------------------
   # 6. INITIALIZATION
-  #    On first boot (or if helpers are empty), set sensible
-  #    defaults. Does nothing if values are already configured.
+  #    Runs once on first install. Sets sensible defaults for
+  #    all helpers, then flips a flag so it never runs again.
   # ----------------------------------------------------------
   - id: lettucegrow_initialize_defaults
     alias: "LettuceGrow – Initialize Defaults"
@@ -551,98 +561,66 @@ automation:
     triggers:
       - trigger: homeassistant
         event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.lettucegrow_initialized
+        state: "off"
     actions:
-      # --- input_text: set entity IDs if empty ---
-      - if:
-          - condition: template
-            value_template: "{{ states('input_text.lettucegrow_light_entity') in ['unknown', 'unavailable', ''] }}"
-        then:
-          - action: input_text.set_value
-            target:
-              entity_id: input_text.lettucegrow_light_entity
-            data:
-              value: "switch.hydroponic_plug_switch"
-      - if:
-          - condition: template
-            value_template: "{{ states('input_text.lettucegrow_pump_entity') in ['unknown', 'unavailable', ''] }}"
-        then:
-          - action: input_text.set_value
-            target:
-              entity_id: input_text.lettucegrow_pump_entity
-            data:
-              value: "switch.hydroponic_plug_switch_2"
-      # --- input_datetime: set schedule if at midnight (unconfigured) ---
-      - if:
-          - condition: template
-            value_template: "{{ states('input_datetime.lettucegrow_day_start') in ['unknown', 'unavailable', '00:00:00'] }}"
-        then:
-          - action: input_datetime.set_datetime
-            target:
-              entity_id: input_datetime.lettucegrow_day_start
-            data:
-              time: "06:00:00"
-      - if:
-          - condition: template
-            value_template: "{{ states('input_datetime.lettucegrow_day_end') in ['unknown', 'unavailable', '00:00:00'] }}"
-        then:
-          - action: input_datetime.set_datetime
-            target:
-              entity_id: input_datetime.lettucegrow_day_end
-            data:
-              time: "22:00:00"
-      # --- input_number: set defaults if at minimum (unconfigured) ---
-      - if:
-          - condition: template
-            value_template: "{{ states('input_number.lettucegrow_pump_duration') | float(0) <= 1 }}"
-        then:
-          - action: input_number.set_value
-            target:
-              entity_id: input_number.lettucegrow_pump_duration
-            data:
-              value: 2
-      - if:
-          - condition: template
-            value_template: "{{ states('input_number.lettucegrow_day_pump_interval') | float(0) <= 15 }}"
-        then:
-          - action: input_number.set_value
-            target:
-              entity_id: input_number.lettucegrow_day_pump_interval
-            data:
-              value: 60
-      - if:
-          - condition: template
-            value_template: "{{ states('input_number.lettucegrow_night_pump_interval') | float(0) <= 30 }}"
-        then:
-          - action: input_number.set_value
-            target:
-              entity_id: input_number.lettucegrow_night_pump_interval
-            data:
-              value: 180
-      - if:
-          - condition: template
-            value_template: "{{ states('input_number.lettucegrow_test_pump_minutes') | float(0) <= 1 }}"
-        then:
-          - action: input_number.set_value
-            target:
-              entity_id: input_number.lettucegrow_test_pump_minutes
-            data:
-              value: 5
-      - if:
-          - condition: template
-            value_template: "{{ states('input_number.lettucegrow_snooze_minutes') | float(0) <= 1 }}"
-        then:
-          - action: input_number.set_value
-            target:
-              entity_id: input_number.lettucegrow_snooze_minutes
-            data:
-              value: 30
-      - if:
-          - condition: template
-            value_template: "{{ states('input_number.lettucegrow_spraying_hours') | float(0) <= 1 }}"
-        then:
-          - action: input_number.set_value
-            target:
-              entity_id: input_number.lettucegrow_spraying_hours
-            data:
-              value: 6
+      # --- input_text: entity IDs ---
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.lettucegrow_light_entity
+        data:
+          value: "switch.hydroponic_plug_switch"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.lettucegrow_pump_entity
+        data:
+          value: "switch.hydroponic_plug_switch_2"
+      # --- input_datetime: schedule ---
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lettucegrow_day_start
+        data:
+          time: "06:00:00"
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lettucegrow_day_end
+        data:
+          time: "22:00:00"
+      # --- input_number: pump & override durations ---
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.lettucegrow_pump_duration
+        data:
+          value: 2
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.lettucegrow_day_pump_interval
+        data:
+          value: 60
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.lettucegrow_night_pump_interval
+        data:
+          value: 180
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.lettucegrow_test_pump_minutes
+        data:
+          value: 5
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.lettucegrow_snooze_minutes
+        data:
+          value: 30
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.lettucegrow_spraying_hours
+        data:
+          value: 6
+      # --- Mark as initialized (never runs again) ---
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.lettucegrow_initialized
     mode: single
